@@ -4,7 +4,10 @@ namespace App\Models;
 
 use App\Enums\CompanyStatus;
 use App\Enums\MembershipStatus;
+use App\Enums\Permission;
 use App\Enums\UserStatus;
+use App\Services\Authorization\PermissionResolver;
+use App\Support\Tenancy\TenantContext;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -93,6 +96,52 @@ class User extends Authenticatable
     public function isActiveMemberOf(Company $company): bool
     {
         return $this->activeCompanies()->whereKey($company->getKey())->exists();
+    }
+
+    /**
+     * Whether the user holds the permission in the active company.
+     * Outside a company context no tenant permission is granted.
+     */
+    public function hasPermission(Permission $permission): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        $company = app(TenantContext::class)->company();
+
+        return $company !== null
+            && app(PermissionResolver::class)->has($this, $company, $permission);
+    }
+
+    /**
+     * Permission values held in the active company (for UI rendering only;
+     * the backend always re-checks through Gates and Policies).
+     *
+     * @return list<string>
+     */
+    public function currentPermissions(): array
+    {
+        if ($this->isSuperAdmin()) {
+            return Permission::values();
+        }
+
+        $company = app(TenantContext::class)->company();
+
+        return $company === null
+            ? []
+            : array_keys(app(PermissionResolver::class)->permissionsFor($this, $company));
+    }
+
+    /**
+     * The user's membership in the given company, if any.
+     */
+    public function membershipIn(Company $company): ?Membership
+    {
+        return Membership::query()
+            ->where('company_id', $company->getKey())
+            ->where('user_id', $this->getKey())
+            ->first();
     }
 
     public function isActive(): bool
