@@ -72,10 +72,7 @@ const logoutOthers = () => {
 
         <SettingsLayout>
             <div class="space-y-6">
-                <HeadingSmall
-                    title="Browser sessions"
-                    description="Review where your account is signed in and end sessions you do not recognise."
-                />
+                <HeadingSmall title="Browser sessions" description="Review where your account is signed in and end sessions you do not recognise." />
 
                 <p v-if="!supported" class="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
                     Session management requires the <code>database</code> session driver.
@@ -105,9 +102,7 @@ const logoutOthers = () => {
                         <form class="space-y-6" @submit.prevent="logoutOthers">
                             <DialogHeader class="space-y-3">
                                 <DialogTitle>Log out other sessions?</DialogTitle>
-                                <DialogDescription>
-                                    Every session except this one will be ended. Confirm with your password.
-                                </DialogDescription>
+                                <DialogDescription> Every session except this one will be ended. Confirm with your password. </DialogDescription>
                             </DialogHeader>
                             <div class="grid gap-2">
                                 <Label for="password" class="sr-only">Password</Label>

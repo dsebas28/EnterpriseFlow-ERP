@@ -38,7 +38,8 @@ const accept = () =>
         <!-- Signed in with the invited address -->
         <form v-if="authenticatedEmail && emailMatches" class="flex flex-col gap-4" @submit.prevent="accept">
             <p class="text-center text-sm text-muted-foreground">
-                Signed in as <strong>{{ authenticatedEmail }}</strong>.
+                Signed in as <strong>{{ authenticatedEmail }}</strong
+                >.
             </p>
             <Button type="submit" :disabled="form.processing">
                 <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
@@ -49,8 +50,9 @@ const accept = () =>
         <!-- Signed in with a different address -->
         <div v-else-if="authenticatedEmail" class="space-y-4 text-center text-sm">
             <p>
-                This invitation was sent to <strong>{{ invitation.email }}</strong>, but you are signed in as
-                <strong>{{ authenticatedEmail }}</strong>.
+                This invitation was sent to <strong>{{ invitation.email }}</strong
+                >, but you are signed in as <strong>{{ authenticatedEmail }}</strong
+                >.
             </p>
             <TextLink :href="route('logout')" method="post" as="button">Log out and try again</TextLink>
         </div>
