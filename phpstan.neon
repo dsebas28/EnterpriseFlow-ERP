@@ -1,0 +1,15 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/
+        - config/
+        - database/
+        - routes/
+
+    # Level 6 enforces typed properties/params/returns without drowning the
+    # codebase in generics noise. Raise gradually as the domain stabilises.
+    level: 6
+
+    tmpDir: storage/phpstan
