@@ -104,14 +104,31 @@ Se elige BD compartida por simplicidad operativa, con **tres capas de defensa**:
 
 ## 4. Identidad, roles y permisos
 
-- **Super Admin:** flag de plataforma `users.is_super_admin`. No pertenece a empresas; `Gate::before` le concede acceso administrativo global. Nunca se asigna desde la UI de una empresa.
-- **Membresía:** `company_user` (usuario ↔ empresa, con estado `active|suspended`). Un usuario puede pertenecer a varias empresas con roles distintos en cada una.
-- **Roles por empresa:** cada empresa recibe al crearse copias de los roles del sistema (Owner, Administrator, Manager, Accountant, Sales, Warehouse, Employee) y puede ajustarlos. `roles.company_id` + `unique(company_id, slug)`.
-- **Permisos granulares:** fuente de verdad en el enum `App\Enums\Permission` (`products.view`, `sales.cancel`…), sincronizados a tabla `permissions`.
-- **Evaluación:** `$user->hasPermissionTo(Permission::SalesCancel)` consulta los permisos del usuario **en la empresa activa**, resueltos una vez por request y cacheados en memoria. Las Policies combinan permiso + pertenencia del recurso a la empresa + reglas de estado (p. ej. no cancelar una venta pagada).
+- **Super Admin:** flag de plataforma `users.is_super_admin`. `Gate::before` le concede todas las abilities, pero sigue necesitando membresía para *entrar* a una empresa. Nunca se asigna desde la UI de una empresa.
+- **Membresía:** `company_user` (usuario ↔ empresa, con estado `active|suspended`). Un usuario puede pertenecer a varias empresas con roles distintos en cada una. Un administrador de empresa **suspende la membresía, no la cuenta**: la cuenta global (`users.status`) solo la gestiona la plataforma.
+- **Roles por empresa:** al crearse, cada empresa recibe copias de los roles del sistema (`App\Enums\SystemRole`: Owner, Administrator, Manager, Accountant, Sales, Warehouse, Employee) y puede ajustar sus permisos o crear roles propios. `roles.company_id` + `unique(company_id, slug)`.
+- **Permisos en código, roles en datos:** el enum `App\Enums\Permission` (`products.view`, `sales.cancel`…) es la fuente de verdad; no hay tabla `permissions` que sincronizar. `role_permissions(role_id, permission)` guarda la asignación y permite consultas como "¿quién puede cancelar ventas?". Nombres obsoletos se ignoran al resolver.
+- **Owner implícito:** el rol Owner tiene *siempre* todos los permisos (no se almacenan), así un permiso nuevo nunca deja fuera al dueño. Es inmutable.
+- **Integridad:** `membership_role(company_id, membership_id, role_id)` con FKs compuestas: la BD impide asignar a un miembro un rol de otra empresa.
+- **Evaluación:** `PermissionResolver` (binding *scoped*) resuelve con **una consulta** la unión de permisos de los roles de la membresía activa y la memoiza por request. Cada permiso es una Gate (`can:sales.cancel`, `$user->can('sales.cancel')`). Las Policies combinan permiso + pertenencia del recurso + reglas de estado.
+- **Reglas de protección del equipo** (`MembershipGuard`, en Actions para que web y API las compartan): nadie modifica su propia membresía; solo un Owner gestiona a otros Owners o concede ese rol; una empresa nunca se queda sin Owner activo. Violaciones → `BusinessRuleViolation` (422).
 - El frontend recibe la lista de permisos solo para **ocultar** UI; nunca es fuente de autorización.
 
-**¿Por qué no `spatie/laravel-permission`?** Es excelente, pero su modo *teams* añade complejidad de configuración, y el modelo aquí es pequeño (~5 tablas, ~150 líneas). Implementarlo permite controlar el cache por tenant y las FKs compuestas. Se reconsiderará si aparecen permisos directos por usuario o jerarquías de roles.
+**¿Por qué no `spatie/laravel-permission`?** Es excelente, pero su modo *teams* añade configuración y cache global que habría que adaptar al tenant, y el modelo aquí es pequeño (3 tablas). Implementarlo permite controlar la resolución por tenant y las FKs compuestas. Se reconsiderará si aparecen permisos directos por usuario o jerarquías de roles.
+
+### 4.1 Invitaciones
+
+- Token aleatorio de 64 caracteres enviado por email; en BD solo se guarda su **SHA-256** (un volcado de la BD no permite aceptar invitaciones).
+- Caducan a los 7 días, son de un solo uso (fila bloqueada con `lockForUpdate` al aceptar) y re-invitar revoca la invitación pendiente anterior.
+- El email debe coincidir con el de la cuenta que acepta. Usuarios nuevos crean su cuenta desde el enlace (email verificado por el propio token).
+- La notificación viaja por la cola con un *snapshot* de valores escalares, no con el modelo: los workers no tienen contexto de tenant.
+
+### 4.2 Sesiones y cuenta
+
+- Sesiones en driver `database` (el único que indexa sesiones por usuario): permite listar y revocar sesiones propias. Redis queda para cache y colas.
+- Cambiar la contraseña cierra las demás sesiones; "cerrar otras sesiones" exige contraseña y rota el hash de *remember me*.
+- Cuentas inactivas: el login falla con el mismo mensaje que credenciales inválidas (no revela estado) y las sesiones/tokens activos se cortan en el siguiente request.
+- Eventos de autenticación (login, fallo, bloqueo, logout, reset, cambio de empresa, acceso denegado a tenant) → canal `security` vía `SecurityLogger`, con usuario, empresa, IP y user agent.
 
 ## 5. Modelo de datos
 
@@ -223,9 +240,9 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 ## 14. Plan incremental
 
 1. ✅ Arquitectura y fundaciones (este documento, tooling, logging)
-2. Base de datos núcleo + multi-tenancy
-3. Autenticación (sesiones, invitaciones, desactivación)
-4. Roles y permisos
+2. ✅ Base de datos núcleo + multi-tenancy
+3. ✅ Autenticación (sesiones, invitaciones, desactivación)
+4. ✅ Roles y permisos
 5. Productos, categorías, variantes, almacenes
 6. Inventario (ledger + proyección)
 7. Compras
