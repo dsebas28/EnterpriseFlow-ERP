@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Services\Auth\SessionManager;
+use App\Support\Logging\SecurityLogger;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,7 +29,7 @@ class PasswordController extends Controller
     /**
      * Update the user's password.
      */
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request, SessionManager $sessions, SecurityLogger $log): RedirectResponse
     {
         $validated = $request->validate([
             'current_password' => ['required', 'current_password'],
@@ -37,6 +39,12 @@ class PasswordController extends Controller
         $request->user()->update([
             'password' => Hash::make($validated['password']),
         ]);
+
+        // A password change is usually a reaction to a suspected compromise:
+        // end every other session so a stolen session cannot outlive it.
+        $revoked = $sessions->revokeOthers($request->user(), $request->session()->getId());
+
+        $log->info('auth.password_changed', ['other_sessions_revoked' => $revoked]);
 
         return back();
     }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -41,7 +42,15 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        // Inactive accounts fail exactly like wrong credentials, so the
+        // response does not reveal which accounts exist or are disabled.
+        $authenticated = Auth::attemptWhen(
+            $this->only('email', 'password'),
+            fn (User $user): bool => $user->isActive(),
+            $this->boolean('remember'),
+        );
+
+        if (! $authenticated) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
