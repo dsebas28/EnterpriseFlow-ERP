@@ -7,6 +7,7 @@ parameters:
         - config/
         - database/
         - routes/
+        - tests/Fixtures/
 
     # Level 6 enforces typed properties/params/returns without drowning the
     # codebase in generics noise. Raise gradually as the domain stabilises.

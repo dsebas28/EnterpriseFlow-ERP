@@ -16,10 +16,26 @@ export interface NavItem {
     isActive?: boolean;
 }
 
+export interface CompanySummary {
+    id: string;
+    name: string;
+}
+
+export interface CurrentCompany extends CompanySummary {
+    currency: string;
+    timezone: string;
+}
+
+export interface Tenant {
+    current: CurrentCompany | null;
+    companies: CompanySummary[];
+}
+
 export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
+    tenant: Tenant | null;
     ziggy: {
         location: string;
         url: string;

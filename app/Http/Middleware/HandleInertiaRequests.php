@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Company;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -45,6 +47,33 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            // Closures are resolved at render time, i.e. after the tenant
+            // middleware has populated the TenantContext.
+            'tenant' => fn (): ?array => $request->user() ? [
+                'current' => $this->currentCompany(),
+                'companies' => $request->user()->activeCompanies()
+                    ->get(['companies.id', 'companies.name'])
+                    ->map(fn (Company $company): array => [
+                        'id' => $company->id,
+                        'name' => $company->name,
+                    ])
+                    ->all(),
+            ] : null,
         ]);
+    }
+
+    /**
+     * @return array{id: string, name: string, currency: string, timezone: string}|null
+     */
+    private function currentCompany(): ?array
+    {
+        $company = app(TenantContext::class)->company();
+
+        return $company ? [
+            'id' => $company->id,
+            'name' => $company->name,
+            'currency' => $company->currency,
+            'timezone' => $company->timezone,
+        ] : null;
     }
 }
