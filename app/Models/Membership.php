@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\MembershipStatus;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 /**
@@ -50,6 +51,32 @@ class Membership extends Pivot
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsToMany<Role, $this>
+     */
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'membership_role', 'membership_id', 'role_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Replace the member's roles. The pivot carries company_id so the
+     * composite foreign keys can verify both sides share the same company.
+     *
+     * @param  iterable<Role>  $roles
+     */
+    public function syncRoles(iterable $roles): void
+    {
+        $this->roles()->sync(
+            collect($roles)->mapWithKeys(fn (Role $role) => [
+                $role->id => ['company_id' => $this->company_id],
+            ])->all(),
+        );
+
+        $this->unsetRelation('roles');
     }
 
     public function isActive(): bool

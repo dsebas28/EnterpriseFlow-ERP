@@ -46,6 +46,8 @@ class HandleInertiaRequests extends Middleware
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
                 'user' => $request->user(),
+                // UI hints only (show/hide actions); every action is re-authorised server-side.
+                'permissions' => fn (): array => $request->user()?->currentPermissions() ?? [],
             ],
             // Closures are resolved at render time, i.e. after the tenant
             // middleware has populated the TenantContext.

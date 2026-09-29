@@ -40,6 +40,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['company_id', 'user_id']);
+            // Target of same-company composite foreign keys (e.g. membership_role).
+            $table->unique(['company_id', 'id']);
             $table->index(['user_id', 'status']);
         });
     }
