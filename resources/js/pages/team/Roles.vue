@@ -85,11 +85,17 @@ const action = (permission: string) => permission.split('.')[1];
 
         <div class="flex flex-col gap-6 p-4 md:p-6">
             <div class="flex flex-wrap items-end justify-between gap-4">
-                <HeadingSmall title="Roles & permissions" description="Roles are sets of permissions. A member's access is the union of their roles." />
+                <HeadingSmall
+                    title="Roles & permissions"
+                    description="Roles are sets of permissions. A member's access is the union of their roles."
+                />
                 <Button v-if="canManage" @click="openEditor(null)"><Plus class="mr-2 h-4 w-4" /> New role</Button>
             </div>
 
-            <p v-if="page.props.flash?.status" class="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+            <p
+                v-if="page.props.flash?.status"
+                class="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-700 dark:text-emerald-300"
+            >
                 {{ page.props.flash.status }}
             </p>
             <p v-if="ruleError" class="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-700 dark:text-red-300">
@@ -102,7 +108,10 @@ const action = (permission: string) => permission.split('.')[1];
                         <div>
                             <h3 class="flex items-center gap-2 font-medium">
                                 {{ role.name }}
-                                <span v-if="role.is_system" class="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                <span
+                                    v-if="role.is_system"
+                                    class="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                                >
                                     System
                                 </span>
                             </h3>
@@ -117,7 +126,10 @@ const action = (permission: string) => permission.split('.')[1];
                             <span>{{ role.members_count }} {{ role.members_count === 1 ? 'member' : 'members' }}</span>
                         </div>
                         <div class="h-1.5 overflow-hidden rounded-full bg-muted">
-                            <div class="h-full rounded-full bg-primary" :style="{ width: `${(role.permissions.length / totalPermissions) * 100}%` }" />
+                            <div
+                                class="h-full rounded-full bg-primary"
+                                :style="{ width: `${(role.permissions.length / totalPermissions) * 100}%` }"
+                            />
                         </div>
                     </div>
 
@@ -139,8 +151,12 @@ const action = (permission: string) => permission.split('.')[1];
                 <form class="space-y-6" @submit.prevent="save">
                     <DialogHeader>
                         <DialogTitle>{{ editing ? editing.name : 'New role' }}</DialogTitle>
-                        <DialogDescription v-if="editing?.is_owner">The Owner role always has every permission and cannot be changed.</DialogDescription>
-                        <DialogDescription v-else-if="editing?.is_system">System role: its name is fixed, its permissions can be adjusted.</DialogDescription>
+                        <DialogDescription v-if="editing?.is_owner"
+                            >The Owner role always has every permission and cannot be changed.</DialogDescription
+                        >
+                        <DialogDescription v-else-if="editing?.is_system"
+                            >System role: its name is fixed, its permissions can be adjusted.</DialogDescription
+                        >
                         <DialogDescription v-else>Pick exactly what this role can do.</DialogDescription>
                     </DialogHeader>
 
@@ -162,7 +178,12 @@ const action = (permission: string) => permission.split('.')[1];
                         <div v-for="(perms, group) in permissionGroups" :key="group" class="rounded-md border p-3">
                             <div class="mb-2 flex items-center justify-between">
                                 <span class="text-sm font-medium capitalize">{{ group }}</span>
-                                <button v-if="!readOnly" type="button" class="text-xs text-muted-foreground hover:text-foreground" @click="toggleGroup(group as string)">
+                                <button
+                                    v-if="!readOnly"
+                                    type="button"
+                                    class="text-xs text-muted-foreground hover:text-foreground"
+                                    @click="toggleGroup(group as string)"
+                                >
                                     Toggle all
                                 </button>
                             </div>

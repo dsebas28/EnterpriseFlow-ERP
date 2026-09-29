@@ -93,8 +93,7 @@ const toggleStatus = (member: Member) => {
     router.post(route(action, member.id), {}, { preserveScroll: true, onFinish: () => (confirming.value = null) });
 };
 
-const revokeInvitation = (invitation: Invitation) =>
-    router.delete(route('team.invitations.destroy', invitation.id), { preserveScroll: true });
+const revokeInvitation = (invitation: Invitation) => router.delete(route('team.invitations.destroy', invitation.id), { preserveScroll: true });
 
 const formatDate = (iso: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Never');
 const initials = (name: string) =>
@@ -116,7 +115,10 @@ const initials = (name: string) =>
                 <Button @click="inviteOpen = true"><MailPlus class="mr-2 h-4 w-4" /> Invite member</Button>
             </div>
 
-            <p v-if="page.props.flash?.status" class="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+            <p
+                v-if="page.props.flash?.status"
+                class="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-700 dark:text-emerald-300"
+            >
                 {{ page.props.flash.status }}
             </p>
             <p v-if="ruleError" class="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-700 dark:text-red-300">
@@ -210,7 +212,11 @@ const initials = (name: string) =>
             <section v-if="invitations.data.length" class="space-y-3">
                 <h3 class="text-sm font-medium">Pending invitations</h3>
                 <ul class="divide-y rounded-lg border">
-                    <li v-for="invitation in invitations.data" :key="invitation.id" class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                    <li
+                        v-for="invitation in invitations.data"
+                        :key="invitation.id"
+                        class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
+                    >
                         <div>
                             <p class="font-medium">{{ invitation.email }}</p>
                             <p class="text-muted-foreground">
@@ -265,7 +271,11 @@ const initials = (name: string) =>
                         <DialogDescription>Permissions of all selected roles are combined.</DialogDescription>
                     </DialogHeader>
                     <div class="grid gap-2">
-                        <label v-for="role in roles.data" :key="role.id" class="flex items-center gap-3 rounded-md border px-3 py-2 text-sm hover:bg-muted/50">
+                        <label
+                            v-for="role in roles.data"
+                            :key="role.id"
+                            class="flex items-center gap-3 rounded-md border px-3 py-2 text-sm hover:bg-muted/50"
+                        >
                             <input v-model="rolesForm.role_ids" type="checkbox" :value="role.id" class="rounded border-input" />
                             {{ role.name }}
                         </label>
