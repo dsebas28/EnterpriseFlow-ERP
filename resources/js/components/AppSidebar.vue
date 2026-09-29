@@ -1,33 +1,29 @@
 <script setup lang="ts">
-import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { type NavItem } from '@/types';
+import { usePermissions } from '@/composables/usePermissions';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-vue-next';
+import { KeyRound, LayoutGrid, Users } from 'lucide-vue-next';
+import { computed } from 'vue';
 import AppLogo from './AppLogo.vue';
 
-const mainNavItems: NavItem[] = [
+const { can, canAny } = usePermissions();
+
+const mainNavItems = [
     {
         title: 'Dashboard',
-        href: '/dashboard',
+        url: '/dashboard',
         icon: LayoutGrid,
     },
 ];
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Github Repo',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits',
-        icon: BookOpen,
-    },
-];
+const teamNavItems = computed(() =>
+    [
+        { title: 'Members', url: '/team/members', icon: Users, visible: can('users.manage') },
+        { title: 'Roles & permissions', url: '/team/roles', icon: KeyRound, visible: canAny('roles.manage', 'users.manage') },
+    ].filter((item) => item.visible),
+);
 </script>
 
 <template>
@@ -45,11 +41,11 @@ const footerNavItems: NavItem[] = [
         </SidebarHeader>
 
         <SidebarContent>
-            <NavMain :items="mainNavItems" />
+            <NavMain label="Platform" :items="mainNavItems" />
+            <NavMain v-if="teamNavItems.length" label="Team" :items="teamNavItems" />
         </SidebarContent>
 
         <SidebarFooter>
-            <NavFooter :items="footerNavItems" />
             <NavUser />
         </SidebarFooter>
     </Sidebar>

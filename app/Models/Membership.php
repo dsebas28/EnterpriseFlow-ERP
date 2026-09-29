@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use App\Enums\MembershipStatus;
+use App\Enums\SystemRole;
+use App\Support\Tenancy\TenantContext;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Support\Carbon;
 
 /**
  * A user's membership in a company. Roles are attached per membership, so
@@ -15,6 +19,10 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property string $company_id
  * @property int $user_id
  * @property MembershipStatus $status
+ * @property int|null $invited_by
+ * @property Carbon|null $joined_at
+ * @property-read User $user
+ * @property-read Collection<int, Role> $roles
  */
 class Membership extends Pivot
 {
@@ -51,6 +59,32 @@ class Membership extends Pivot
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Memberships are not a BelongsToCompany model (they are what links
+     * users to companies), so route-model binding is scoped to the active
+     * company explicitly. Fail-closed when no company is active.
+     *
+     * @param  mixed  $query
+     * @param  mixed  $value
+     * @param  string|null  $field
+     * @return mixed
+     */
+    public function resolveRouteBindingQuery($query, $value, $field = null)
+    {
+        return parent::resolveRouteBindingQuery($query, $value, $field)
+            ->where($this->qualifyColumn('company_id'), app(TenantContext::class)->idOrFail());
+    }
+
+    public function hasRole(SystemRole $role): bool
+    {
+        return $this->roles->contains(fn (Role $r) => $r->is_system && $r->slug === $role->value);
+    }
+
+    public function isOwner(): bool
+    {
+        return $this->hasRole(SystemRole::Owner);
     }
 
     /**

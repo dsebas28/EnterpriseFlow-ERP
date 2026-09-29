@@ -2,6 +2,21 @@ import type { LucideIcon } from 'lucide-vue-next';
 
 export interface Auth {
     user: User;
+    permissions: string[];
+}
+
+export interface Paginated<T> {
+    data: T[];
+    links: { first: string | null; last: string | null; prev: string | null; next: string | null };
+    meta: {
+        current_page: number;
+        last_page: number;
+        from: number | null;
+        to: number | null;
+        total: number;
+        per_page: number;
+        links: { url: string | null; label: string; active: boolean }[];
+    };
 }
 
 export interface BreadcrumbItem {
@@ -35,6 +50,7 @@ export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
+    flash: { status: string | null };
     tenant: Tenant | null;
     ziggy: {
         location: string;

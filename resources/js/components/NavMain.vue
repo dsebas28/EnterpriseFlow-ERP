@@ -11,6 +11,7 @@ interface NavItem {
 }
 
 defineProps<{
+    label: string;
     items: NavItem[];
 }>();
 
@@ -19,10 +20,10 @@ const page = usePage<SharedData>();
 
 <template>
     <SidebarGroup class="px-2 py-0">
-        <SidebarGroupLabel>Platform</SidebarGroupLabel>
+        <SidebarGroupLabel>{{ label }}</SidebarGroupLabel>
         <SidebarMenu>
             <SidebarMenuItem v-for="item in items" :key="item.title">
-                <SidebarMenuButton as-child :is-active="item.url === page.url">
+                <SidebarMenuButton as-child :is-active="page.url.startsWith(item.url)">
                     <Link :href="item.url">
                         <component :is="item.icon" />
                         <span>{{ item.title }}</span>
