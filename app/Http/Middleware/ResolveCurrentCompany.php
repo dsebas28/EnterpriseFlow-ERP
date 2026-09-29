@@ -4,10 +4,10 @@ namespace App\Http\Middleware;
 
 use App\Models\Company;
 use App\Models\User;
+use App\Support\Logging\SecurityLogger;
 use App\Support\Tenancy\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -27,7 +27,10 @@ class ResolveCurrentCompany
 
     public const HEADER = 'X-Company-Id';
 
-    public function __construct(private readonly TenantContext $tenant) {}
+    public function __construct(
+        private readonly TenantContext $tenant,
+        private readonly SecurityLogger $log,
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -43,11 +46,7 @@ class ResolveCurrentCompany
         $company = $this->resolve($user, $requestedId, fallback: $stateful);
 
         if ($requestedId !== null && $company?->getKey() !== $requestedId) {
-            Log::channel('security')->warning('tenant.access_denied', [
-                'user_id' => $user->getKey(),
-                'requested_company_id' => $requestedId,
-                'ip' => $request->ip(),
-            ]);
+            $this->log->warning('tenant.access_denied', ['requested_company_id' => $requestedId]);
 
             // An explicit API header for a foreign company is an error; a stale
             // session value (e.g. the user was removed) just falls back.
