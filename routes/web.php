@@ -14,6 +14,7 @@ use App\Http\Controllers\Finance\ExpenseController;
 use App\Http\Controllers\Finance\InvoiceController;
 use App\Http\Controllers\Finance\PaymentController;
 use App\Http\Controllers\Finance\SupplierBillController;
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\Inventory\StockController;
 use App\Http\Controllers\Inventory\StockMovementController;
 use App\Http\Controllers\NotificationController;
@@ -37,6 +38,8 @@ Route::get('/', function () {
 })->name('home');
 
 // Invitee flow: works for guests and for signed-in users of any company.
+Route::get('health', HealthController::class)->name('health');
+
 Route::get('invitations/{token}', [AcceptInvitationController::class, 'show'])->name('invitations.show');
 Route::post('invitations/{token}/accept', [AcceptInvitationController::class, 'store'])
     ->middleware('throttle:10,1')

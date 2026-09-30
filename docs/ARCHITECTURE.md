@@ -415,7 +415,7 @@ sequenceDiagram
 ## 11. Observabilidad
 
 - Canales de log separados, JSON por línea con contexto (`company_id`, `user_id`, IP): `app_json` (aplicación), `queue` (jobs y exportaciones), `security` (autenticación, accesos denegados, cambios de empresa; 90 días) y `audit` (cambios de datos; 365 días).
-- `GET /health` comprueba aplicación, base de datos y Redis y devuelve `200` o `503` con detalle por componente.
+- `GET /health` (readiness) comprueba base de datos, caché, almacenamiento y Redis; `200`/`503` con estado y latencia por componente, sin exponer errores (ver 12.1).
 
 ## 12. Entornos y verificación
 
@@ -427,7 +427,22 @@ sequenceDiagram
 
 El código evita SQL específico de un motor salvo donde se justifica (p. ej. `lockForUpdate`, que en SQLite es un no-op seguro porque SQLite serializa escrituras).
 
-### 12.1 Estrategia de tests
+### 12.1 Contenedores
+
+`Dockerfile` multi-stage → dos imágenes finales sin herramientas de build, dependencias de desarrollo, Node ni tests:
+
+| Stage | Base | Contenido |
+|---|---|---|
+| `vendor` | `composer:2` | dependencias de producción (`--no-dev`), autoload optimizado |
+| `assets` | `node:22-alpine` | `vite build` (usa Ziggy desde `vendor/`) |
+| `app` | `php:8.3-fpm-alpine` | runtime PHP (`pdo_pgsql intl zip gd bcmath opcache pcntl redis`), usuario `www-data`, OPcache sin revalidación, healthcheck vía FPM `/ping` |
+| `web` | `nginx:1.27-alpine` | solo `public/`; ejecuta únicamente `index.php`, cabeceras de seguridad, caché inmutable para `/build`, `/storage` desde el volumen compartido |
+
+`docker-compose.yml`: `app` (PHP-FPM), `nginx` (:8080), `queue` (misma imagen, `queue:work` con prioridades `webhooks,notifications,documents,reports,default`), `scheduler` (`schedule:work`), `postgres:16`, `redis:7` (AOF) y `mailpit` (:8025). Arranque ordenado por healthchecks: Postgres/Redis → `app` (migra y, con `SEED_DEMO=true`, carga la demo de forma idempotente) → `queue`, `scheduler`, `nginx`. El entrypoint cachea config/rutas/vistas/eventos con el entorno real (`php artisan optimize`) y se niega a arrancar sin `APP_KEY`. Puertos de Postgres y Mailpit publicados solo en `127.0.0.1`.
+
+**Probes:** `GET /up` (liveness, Laravel) y `GET /health` (readiness): base de datos, caché (ida y vuelta), almacenamiento y Redis si algún driver lo usa; `200`/`503` con latencias, sin detalles de error (van al log).
+
+### 12.2 Estrategia de tests
 
 **527 tests (Pest 4), ~2 800 aserciones, cobertura de líneas 96,7 %** (`app/`, medida con pcov). Lo que no cubre SQLite (ramas PostgreSQL/MySQL de `DateBucket`) lo ejercita CI contra PostgreSQL.
 

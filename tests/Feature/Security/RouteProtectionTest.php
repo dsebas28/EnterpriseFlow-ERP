@@ -20,6 +20,7 @@ use Tests\Support\BusinessScenario;
 /** Reachable without authentication (by name, or URI when unnamed). */
 const PUBLIC_ROUTES = [
     'home', 'up', 'storage.local', 'storage.local.upload',
+    'health', // readiness probe: up/down and timings only, no details
     'login', 'register', 'password.request', 'password.email', 'password.reset', 'password.store',
     'invitations.show', 'invitations.accept',
     'api.v1.auth.login', 'webhooks.receive',

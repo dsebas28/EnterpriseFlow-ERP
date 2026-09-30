@@ -1,0 +1,38 @@
+# Rebuilt inside the image
+vendor
+node_modules
+public/build
+public/hot
+public/storage
+bootstrap/cache/*.php
+
+# Runtime state
+storage/app/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+storage/pail
+storage/phpstan
+database/*.sqlite
+
+# Secrets never go into an image
+.env
+.env.*
+!.env.example
+auth.json
+
+# Not needed at runtime
+.git
+.github
+.idea
+.vscode
+.fleet
+.zed
+tests
+docs
+.phpunit.cache
+.phpunit.result.cache
+*.log
+Dockerfile
+docker-compose*.yml
