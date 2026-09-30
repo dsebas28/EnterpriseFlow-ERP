@@ -1,5 +1,11 @@
 # EnterpriseFlow ERP
 
+[![CI](https://github.com/dsebas28/EnterpriseFlow-ERP/actions/workflows/ci.yml/badge.svg)](https://github.com/dsebas28/EnterpriseFlow-ERP/actions/workflows/ci.yml)
+![PHP 8.3](https://img.shields.io/badge/PHP-8.3-777BB4?logo=php&logoColor=white)
+![Laravel 12](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)
+![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![Vue 3](https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs&logoColor=white)
+
 ERP SaaS **multiempresa** para pequeñas y medianas empresas: catálogo, inventario basado en movimientos, compras, ventas, facturación, pagos, gastos, reportes, auditoría, API REST y webhooks.
 
 Proyecto de portafolio construido con foco en **backend de calidad de producción**: aislamiento entre empresas que falla de forma segura, permisos granulares, consistencia transaccional, trazabilidad completa y una batería de tests que valida la seguridad sobre *todas* las rutas.
@@ -59,7 +65,7 @@ Proyecto de portafolio construido con foco en **backend de calidad de producció
 Requisitos: Docker con Compose v2.
 
 ```bash
-git clone <url-del-repositorio> enterpriseflow && cd enterpriseflow
+git clone https://github.com/dsebas28/EnterpriseFlow-ERP.git enterpriseflow && cd enterpriseflow
 cp .env.example .env
 docker compose run --rm --no-deps app php artisan key:generate --show   # copia el valor en APP_KEY de .env
 docker compose up -d --build
