@@ -101,6 +101,9 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(5)->by(Str::lower((string) $request->input('email')).'|'.$request->ip()),
             Limit::perMinute(20)->by($request->ip()),
         ]);
+
+        // Providers burst on retries; signature checks happen after this.
+        RateLimiter::for('webhooks', fn (Request $request) => Limit::perMinute(300)->by($request->ip()));
     }
 
     private function configurePasswords(): void

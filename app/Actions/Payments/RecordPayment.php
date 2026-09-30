@@ -21,6 +21,9 @@ use Illuminate\Support\Facades\DB;
  * Records money received against an invoice or paid against a supplier
  * bill. The document row is locked, so two payments recorded at the same
  * time can never exceed its balance.
+ *
+ * `$user` is null for payments recorded by the system (payment gateway
+ * webhooks); the audit trail then shows no human actor.
  */
 final class RecordPayment
 {
@@ -29,7 +32,7 @@ final class RecordPayment
         private readonly Settlement $settlement,
     ) {}
 
-    public function handle(Invoice|SupplierBill $document, PaymentData $data, User $user): Payment
+    public function handle(Invoice|SupplierBill $document, PaymentData $data, ?User $user): Payment
     {
         if ($data->amount <= 0) {
             throw new BusinessRuleViolation('The payment amount must be greater than zero.');
@@ -65,7 +68,7 @@ final class RecordPayment
                 'reference' => $data->reference,
                 'notes' => $data->notes,
                 'status' => PaymentStatus::Posted,
-                'created_by' => $user->id,
+                'created_by' => $user?->id,
             ])->save();
 
             $isInvoice ? $this->settlement->settleInvoice($document) : $this->settlement->settleBill($document);

@@ -3,10 +3,14 @@
 namespace App\Models;
 
 use App\Support\Tenancy\BelongsToCompany;
+use App\Support\Tenancy\CompanyScope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @property string $id
@@ -24,11 +28,14 @@ use Illuminate\Support\Carbon;
  */
 class ReportExport extends Model
 {
-    use BelongsToCompany, HasUlids;
+    use BelongsToCompany, HasUlids, Prunable;
 
     public const DISK = 'local';
 
     public const FORMATS = ['csv', 'xlsx', 'pdf'];
+
+    /** Exports are downloads, not archives: files are removed after this. */
+    public const RETENTION_DAYS = 7;
 
     protected $guarded = ['*'];
 
@@ -47,5 +54,25 @@ class ReportExport extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Platform-wide maintenance (model:prune runs without a tenant), hence
+     * the explicit, deliberate scope bypass.
+     *
+     * @return Builder<static>
+     */
+    public function prunable(): Builder
+    {
+        return static::query()
+            ->withoutGlobalScope(CompanyScope::class)
+            ->where('created_at', '<', now()->subDays(self::RETENTION_DAYS));
+    }
+
+    protected function pruning(): void
+    {
+        if ($this->file_path !== null) {
+            Storage::disk(self::DISK)->delete($this->file_path);
+        }
     }
 }
