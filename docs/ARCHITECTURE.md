@@ -460,7 +460,7 @@ Dependabot propone actualizaciones semanales (Composer, npm) y mensuales (Action
 
 ### 12.3 Estrategia de tests
 
-**527 tests (Pest 4), ~2 800 aserciones, cobertura de líneas 96,7 %** (`app/`, medida con pcov). Lo que no cubre SQLite (ramas PostgreSQL/MySQL de `DateBucket`) lo ejercita CI contra PostgreSQL.
+**534 tests (Pest 4), ~2 840 aserciones, cobertura de líneas ~96,7 %**, en SQLite y PostgreSQL (`app/`, medida con pcov). Lo que no cubre SQLite (ramas PostgreSQL/MySQL de `DateBucket`) lo ejercita CI contra PostgreSQL.
 
 | Capa | Qué garantiza | Dónde |
 |---|---|---|
@@ -469,6 +469,7 @@ Dependabot propone actualizaciones semanales (Composer, npm) y mensuales (Action
 | Feature por módulo | Reglas de negocio de punta a punta vía HTTP y Actions (stock, estados, pagos, reportes con cifras exactas…) | `tests/Feature/<Módulo>` |
 | **Barridos de seguridad** | Recorren las rutas *registradas*, así que una ruta nueva queda cubierta sin escribir tests: (1) toda ruta exige autenticación salvo una lista pública revisada, y rechaza a invitados (redirect/401); (2) un miembro sin roles recibe `403` en toda ruta con permisos; (3) los registros de otra empresa responden `404` en **toda** ruta con model binding | `tests/Feature/Security/RouteProtectionTest.php` |
 | Cobertura de tenancy | Todo modelo cuya tabla tiene `company_id` lleva el `CompanyScope` fail-closed (o está en una lista de excepciones justificadas, que el propio test mantiene honesta); todos fallan sin empresa activa | `tests/Feature/Tenancy/TenantModelCoverageTest.php` |
+| Seeder demo | Construye la demo con las Actions reales, numeración cronológica, sin stock negativo, idempotente | `tests/Feature/DemoSeederTest.php` |
 | Render de páginas | Cada página Inertia renderiza para un Owner con datos reales y su componente Vue existe; cada reporte se ejecuta con datos | `tests/Feature/PageRenderTest.php` |
 
 - **Escenario compartido** `Tests\Support\BusinessScenario`: una empresa con un registro de cada tipo en estados realistas, construido con las Actions reales (nunca inserts crudos).
@@ -508,4 +509,4 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 15. ✅ Notificaciones
 16. ✅ Tests: barridos de seguridad, reglas de arquitectura, cobertura
 17. ✅ Docker y CI/CD
-18. Demo, README y documentación final
+18. ✅ Demo realista, README con capturas y documentación final
