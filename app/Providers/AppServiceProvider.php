@@ -3,9 +3,11 @@
 namespace App\Providers;
 
 use App\Models\Company;
+use App\Models\Customer;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseReceipt;
+use App\Models\Sale;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -62,6 +64,8 @@ class AppServiceProvider extends ServiceProvider
             'supplier' => Supplier::class,
             'purchase_order' => PurchaseOrder::class,
             'purchase_receipt' => PurchaseReceipt::class,
+            'customer' => Customer::class,
+            'sale' => Sale::class,
         ]);
     }
 
