@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SaleController;
+use App\Http\Controllers\Webhooks\WebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -44,3 +45,12 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         });
     });
 });
+
+/*
+| Inbound webhooks. Unversioned: the payload contract belongs to the
+| provider. Authenticated by HMAC signature, not by token.
+*/
+Route::post('webhooks/{provider}', WebhookController::class)
+    ->where('provider', '[a-z0-9-]+')
+    ->middleware('throttle:webhooks')
+    ->name('webhooks.receive');

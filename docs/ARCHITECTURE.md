@@ -324,10 +324,58 @@ Los workers no tienen sesión, así que un job debe saber para qué empresa trab
 
 ## 9. Asíncrono: colas, scheduler y webhooks
 
-- **Redis** como backend de colas con colas separadas: `default`, `notifications`, `reports`, `webhooks`.
-- Exportaciones/PDFs: el request crea un `report_exports` en estado `pending`, encola el Job y la UI consulta el estado (`processing → completed|failed`).
-- **Scheduler:** facturas vencidas, stock bajo, recordatorios, poda de sesiones/tokens, reportes periódicos.
-- **Webhooks entrantes:** verificación HMAC con comparación en tiempo constante y ventana de timestamp → persistencia en `webhook_events` con `unique(provider, external_id)` (idempotencia garantizada por la BD) → respuesta `202` inmediata → procesamiento en Job con reintentos y backoff.
+### 9.1 Colas
+
+- **Redis** en Docker/producción; colas por tipo de trabajo, consumidas por prioridad: `queue:work --queue=webhooks,notifications,documents,reports,default`. Un export pesado nunca retrasa el acuse de un pago.
+- Jobs con contexto de tenant (`TenantAware`, ver 7.5); guardan ids, no modelos.
+- `retry_after` (330 s) supera el `timeout` del job más largo (exportaciones, 300 s): un job lento no se entrega a un segundo worker a mitad de ejecución.
+- Reintentos con `backoff` escalonado por job; `failed()` deja el estado final persistido y registrado en el canal `queue`.
+
+### 9.2 Scheduler (`routes/console.php`)
+
+Todas las tareas son idempotentes y usan `onOneServer()` (lock en la caché compartida) para despliegues con varios nodos.
+
+| Tarea | Frecuencia | Motivo |
+|---|---|---|
+| `invoices:mark-overdue` | cada hora, `withoutOverlapping` | cada empresa cierra el día en su zona horaria; re-ejecutar no cambia nada |
+| `sanctum:prune-expired --hours=24` | diaria | tokens de API vencidos |
+| `model:prune` | diaria 02:00 | eventos de webhook finalizados (> 90 días) y exportaciones (> 7 días, con su archivo) |
+| `queue:prune-failed` / `queue:prune-batches` | diaria | higiene de tablas de colas |
+| `auth:clear-resets` | cada 15 min | tokens de reseteo de contraseña vencidos |
+
+`model:prune` corre sin tenant: `ReportExport::prunable()` omite `CompanyScope` de forma **explícita** (mantenimiento de plataforma), en lugar de relajar el scope global.
+
+### 9.3 Webhooks entrantes idempotentes
+
+`POST /api/webhooks/{provider}` (sin versión: el contrato del payload es del proveedor; `throttle:webhooks` 300/min por IP).
+
+```mermaid
+sequenceDiagram
+    participant P as Proveedor
+    participant C as WebhookController
+    participant DB as webhook_events
+    participant Q as Cola "webhooks"
+    participant J as ProcessWebhookEvent
+    P->>C: POST + X-Webhook-Signature
+    C->>C: HMAC-SHA256 (t + cuerpo crudo), hash_equals, ventana 300 s
+    C->>DB: INSERT (unique provider+external_id)
+    alt nuevo
+        C->>Q: dispatch(id)
+        C-->>P: 202 Event accepted
+    else duplicado
+        C-->>P: 200 Event already received (sin efectos)
+    end
+    Q->>J: handle()
+    J->>DB: BEGIN; SELECT ... FOR UPDATE
+    J->>J: handler del proveedor (p. ej. RecordPayment)
+    J->>DB: status = processed; COMMIT
+```
+
+- **Firma:** `t=<unix>,v1=<hex>`; el timestamp forma parte del contenido firmado (una firma capturada no se reutiliza con otro `t`). Se aceptan varios `v1` para rotar secretos. Proveedor sin secreto configurado → `404` (nunca se acepta nada sin firmar). Firmas inválidas → `401` y evento en el canal `security`.
+- **Idempotencia en tres niveles:** (1) índice único `(provider, external_id)` ante reentregas concurrentes; (2) el job bloquea la fila y sale si el evento ya está finalizado; (3) los efectos del handler y el `processed` se confirman en **la misma transacción**, así que un crash entre ambos no deja un pago aplicado sin marcar.
+- **Fallos:** `UnprocessableWebhook` o `BusinessRuleViolation` (empresa/factura desconocida, moneda distinta, sobrepago) → `failed` sin reintentos, con `last_error`. Cualquier otra excepción es transitoria → reintento (5 intentos, backoff 10 s/1 min/5 min/15 min) y `failed` al agotarlos. Una reentrega del proveedor o `php artisan webhooks:retry {ids*|--all}` reencolan eventos fallidos.
+- **Aislamiento de tenant:** `webhook_events` es una tabla de plataforma (la empresa solo se conoce al interpretar el payload). El `PaymentGatewayHandler` busca la factura **dentro** de la empresa indicada en el evento, con el scope fail-closed: un evento que nombre a otra empresa no puede tocar la factura (queda `failed: Unknown invoice`).
+- **Handlers por proveedor** (`config/webhooks.php` → `WebhookHandler`): `payments` registra cobros con tarjeta (`payment.succeeded`) usando la misma Action `RecordPayment` que la UI (bloqueo de la factura, sin sobrepagos, numeración, auditoría, evento `PaymentReceived`); tipos no soportados → `ignored`.
 
 ## 10. API
 
@@ -395,5 +443,6 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 11. ✅ Gastos, reportes con exportación y dashboard con datos reales
 12. ✅ Auditoría
 13. ✅ API v1 + OpenAPI
-14. Jobs/colas, notificaciones, scheduler, webhooks
-15. Docker, CI/CD, documentación final
+14. ✅ Jobs/colas, scheduler, webhooks idempotentes
+15. Notificaciones
+16. Docker, CI/CD, documentación final
