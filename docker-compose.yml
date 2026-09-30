@@ -1,0 +1,126 @@
+# EnterpriseFlow ERP — full stack for development and demos.
+#
+#   cp .env.example .env
+#   docker compose run --rm --no-deps app php artisan key:generate --show   # paste into APP_KEY
+#   docker compose up -d --build
+#   open http://localhost:8080   (Mailpit: http://localhost:8025)
+#
+# Values in .env are shared by every service; the overrides below point the
+# application at the containers and are the same for everyone.
+
+name: enterpriseflow
+
+x-app: &app
+  build:
+    context: .
+    target: app
+  image: enterpriseflow/app:local
+  env_file: .env
+  environment: &app-env
+    DB_CONNECTION: pgsql
+    DB_HOST: postgres
+    DB_PORT: 5432
+    REDIS_HOST: redis
+    CACHE_STORE: redis
+    QUEUE_CONNECTION: redis
+    # Sessions stay in the database: Settings -> Sessions lists and revokes them.
+    SESSION_DRIVER: database
+    MAIL_MAILER: smtp
+    MAIL_HOST: mailpit
+    MAIL_PORT: 1025
+    LOG_STACK: stderr,app_json
+  volumes:
+    - storage:/var/www/html/storage
+  restart: unless-stopped
+
+services:
+  app:
+    <<: *app
+    environment:
+      <<: *app-env
+      SEED_DEMO: ${SEED_DEMO:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Queues in priority order: a heavy export never delays a payment webhook.
+  queue:
+    <<: *app
+    command: >
+      php artisan queue:work redis
+      --queue=webhooks,notifications,documents,reports,default
+      --tries=3 --max-time=3600 --sleep=1
+    healthcheck:
+      disable: true
+    # Let the current job finish on shutdown (queue:work handles SIGTERM).
+    stop_grace_period: 60s
+    depends_on:
+      app:
+        condition: service_healthy
+
+  scheduler:
+    <<: *app
+    command: php artisan schedule:work
+    healthcheck:
+      disable: true
+    depends_on:
+      app:
+        condition: service_healthy
+
+  nginx:
+    build:
+      context: .
+      target: web
+    image: enterpriseflow/web:local
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - storage:/var/www/html/storage:ro
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-enterpriseflow}
+      POSTGRES_USER: ${DB_USERNAME:-enterpriseflow}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      # Bound to localhost only, for database tools.
+      - "127.0.0.1:${FORWARD_DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Catches every outgoing email (notifications, invitations, resets).
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "127.0.0.1:${FORWARD_MAILPIT_PORT:-8025}:8025"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  storage:
