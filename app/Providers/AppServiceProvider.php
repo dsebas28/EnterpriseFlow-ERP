@@ -4,6 +4,9 @@ namespace App\Providers;
 
 use App\Models\Company;
 use App\Models\Product;
+use App\Models\PurchaseOrder;
+use App\Models\PurchaseReceipt;
+use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Database\Eloquent\Model;
@@ -56,6 +59,9 @@ class AppServiceProvider extends ServiceProvider
             'company' => Company::class,
             'product' => Product::class,
             'warehouse' => Warehouse::class,
+            'supplier' => Supplier::class,
+            'purchase_order' => PurchaseOrder::class,
+            'purchase_receipt' => PurchaseReceipt::class,
         ]);
     }
 
