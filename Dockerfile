@@ -75,7 +75,8 @@ RUN php artisan package:discover --ansi
 
 EXPOSE 9000
 
-HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=5 \
+# The first start migrates (and may seed the demo) before FPM listens.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=180s --retries=5 \
     CMD SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong
 
 ENTRYPOINT ["entrypoint"]
