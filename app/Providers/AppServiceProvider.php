@@ -19,10 +19,14 @@ use App\Models\Supplier;
 use App\Models\SupplierBill;
 use App\Models\User;
 use App\Models\Warehouse;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
@@ -45,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureModels();
         $this->configureMorphMap();
         $this->configurePasswords();
+        $this->configureRateLimiting();
 
         // Refuse migrate:fresh / db:wipe and friends against production.
         DB::prohibitDestructiveCommands($this->app->isProduction());
@@ -82,6 +87,19 @@ class AppServiceProvider extends ServiceProvider
             'role' => Role::class,
             'membership' => Membership::class,
             'invitation' => Invitation::class,
+        ]);
+    }
+
+    private function configureRateLimiting(): void
+    {
+        // Authenticated API traffic: per token/user, falling back to IP.
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(60)
+            ->by($request->user()?->getAuthIdentifier() ?: $request->ip()));
+
+        // Credential stuffing protection: per email + IP, and per IP overall.
+        RateLimiter::for('api-login', fn (Request $request) => [
+            Limit::perMinute(5)->by(Str::lower((string) $request->input('email')).'|'.$request->ip()),
+            Limit::perMinute(20)->by($request->ip()),
         ]);
     }
 
