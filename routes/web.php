@@ -8,6 +8,7 @@ use App\Http\Controllers\Catalog\ProductVariantController;
 use App\Http\Controllers\Catalog\WarehouseController;
 use App\Http\Controllers\Companies\OnboardingController;
 use App\Http\Controllers\Companies\SwitchCompanyController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Finance\ExpenseController;
 use App\Http\Controllers\Finance\InvoiceController;
 use App\Http\Controllers\Finance\PaymentController;
@@ -47,9 +48,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Everything below operates inside the active company.
     Route::middleware('tenant')->group(function () {
-        Route::get('dashboard', function () {
-            return Inertia::render('Dashboard');
-        })->name('dashboard');
+        Route::get('dashboard', DashboardController::class)->name('dashboard');
 
         Route::prefix('catalog')->name('catalog.')->group(function () {
             Route::get('products/lookup', ProductLookupController::class)

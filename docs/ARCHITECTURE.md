@@ -290,6 +290,27 @@ Los workers no tienen sesión, así que un job debe saber para qué empresa trab
 - `failed()` se ejecuta fuera del pipeline de middleware; el trait ofrece `inTenant()` para ese caso.
 - Las notificaciones encoladas usan el mismo principio (snapshot de valores escalares, ver §4.1).
 
+### 7.6 Gastos
+
+- Flujo `pending → approved | rejected` con **segregación de funciones**: el autor nunca aprueba su propio gasto. Solo los pendientes se editan o eliminan.
+- Comprobantes validados por **contenido real** (PDF/imagen; un test usa un `UploadedFile` real porque `UploadedFile::fake()` deduce el MIME por el nombre) y guardados en disco privado, descargables vía ruta autorizada. Si la escritura en BD falla, el archivo subido se elimina (sin huérfanos).
+
+### 7.7 Reportes y exportaciones
+
+- **Contrato `Report`** (columnas tipadas `text|number|money|percent`, filtros admitidos, filas, totales) + `ReportRegistry`. La pantalla, las exportaciones y la API consumen la misma definición: un número tiene una sola fuente.
+- 10 reportes: ventas por período/producto/cliente, compras por período, gastos por categoría, **pérdidas y ganancias** (ventas netas − costo de lo vendido con el `unit_cost` capturado en cada línea − gastos aprobados), antigüedad de saldos por cobrar/pagar (corriente, 1–30, 31–60, 61–90, 90+), valoración de inventario y stock bajo.
+- Agrupación día/semana/mes con SQL específico por motor aislado en `DateBucket` (`strftime` / `to_char`).
+- Filtros validados contra la empresa activa: un id de otro tenant es un error de validación.
+- **Exportaciones asíncronas** (`report_exports`: `pending → processing → completed | failed`, cola `reports`): CSV nativo con BOM UTF-8, XLSX en streaming (`openspout`, memoria constante) y PDF (dompdf, máx. 2.000 filas). Privadas para quien las solicitó; la UI consulta el estado.
+- **Inyección de fórmulas CSV/Excel neutralizada**: celdas de texto que empiezan por `= + - @` se prefijan con `'`.
+
+### 7.8 Dashboard
+
+- Cifras reales reutilizando las definiciones de reportes (ventas hoy/mes, gráfico diario de 30 días, top productos, gastos, utilidad estimada, cuentas por cobrar/pagar con vencidas, stock bajo, últimas ventas y compras).
+- **Cacheado 60 s por empresa y día** (`Cache::remember`, Redis en producción): la página más visitada no recalcula agregados en cada carga.
+- **Las secciones se filtran por permiso en el servidor**: un empleado sin `reports.view` no recibe las cifras financieras en las props (ocultarlas solo en la UI las filtraría igualmente).
+- Gráfico SVG propio sin dependencias, siguiendo una guía de visualización: una sola serie en un tono validado para contraste y daltonismo (pasos distintos en claro/oscuro), columnas finas con extremo redondeado y separación de 2 px, cuadrícula recesiva, tooltip con área de hover mayor que la marca y tabla accesible para lectores de pantalla.
+
 ## 8. Auditoría
 
 Trait `Auditable` en modelos sensibles → registra `created/updated/deleted/restored` con valores anteriores y nuevos (solo campos cambiados, excluyendo secretos), usuario, empresa, IP, user agent y URL. Acciones de dominio relevantes (cancelar venta, anular pago, cambiar roles) registran eventos explícitos. Además, los eventos de seguridad (login fallido, cambio de roles, cambio de empresa) se escriben en el canal de log `security`.
@@ -334,7 +355,7 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 | `pestphp/pest` | Tests más expresivos sobre PHPUnit. |
 | `larastan/larastan` | Análisis estático consciente de Eloquent. |
 | `barryvdh/laravel-dompdf` | Laravel no genera PDF; se usa solo dentro de un job en cola. |
-| *(fase reportes)* `openspout/openspout` | XLSX en streaming con poca memoria; CSV se hace nativo. |
+| `openspout/openspout` | XLSX en streaming con memoria constante (más ligero que maatwebsite/excel); CSV se hace nativo. |
 | *(fase API)* `dedoc/scramble` | OpenAPI inferido del código, sin anotaciones duplicadas. |
 
 ## 14. Plan incremental
@@ -349,7 +370,7 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 8. ✅ Ventas (clientes, notas, confirmación con stock, cancelación compensatoria)
 9. ✅ Facturación (clientes con PDF asíncrono, proveedores con two-way match)
 10. ✅ Pagos (cobros y pagos, sin sobrepagos, anulación con historial)
-11. Gastos y reportes
+11. ✅ Gastos, reportes con exportación y dashboard con datos reales
 12. Auditoría
 13. API v1 + OpenAPI
 14. Jobs/colas, notificaciones, scheduler, webhooks
