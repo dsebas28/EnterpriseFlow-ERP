@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\Permission;
 use App\Enums\SystemRole;
+use App\Support\Audit\Auditable;
 use App\Support\Tenancy\BelongsToCompany;
 use Database\Factories\RoleFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -25,7 +26,7 @@ use Illuminate\Support\Collection;
 class Role extends Model
 {
     /** @use HasFactory<RoleFactory> */
-    use BelongsToCompany, HasFactory;
+    use Auditable, BelongsToCompany, HasFactory;
 
     protected $fillable = [
         'name',

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PartyStatus;
+use App\Support\Audit\Auditable;
 use App\Support\Tenancy\BelongsToCompany;
 use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -27,7 +28,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Customer extends Model
 {
     /** @use HasFactory<CustomerFactory> */
-    use BelongsToCompany, HasFactory, HasUlids, SoftDeletes;
+    use Auditable, BelongsToCompany, HasFactory, HasUlids, SoftDeletes;
 
     protected $fillable = ['kind', 'name', 'tax_id', 'email', 'phone', 'address', 'city', 'country', 'status'];
 

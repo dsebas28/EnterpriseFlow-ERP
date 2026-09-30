@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\PaymentDirection;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
+use App\Support\Audit\Auditable;
 use App\Support\Money\Money;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -40,7 +41,7 @@ use LogicException;
  */
 class Payment extends Model
 {
-    use BelongsToCompany, HasUlids;
+    use Auditable, BelongsToCompany, HasUlids;
 
     private const VOID_COLUMNS = ['status', 'voided_by', 'voided_at', 'void_reason', 'updated_at'];
 

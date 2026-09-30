@@ -6,6 +6,7 @@ use App\Enums\Permission;
 use App\Exceptions\BusinessRuleViolation;
 use App\Models\Role;
 use App\Services\Authorization\PermissionResolver;
+use App\Support\Audit\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -17,7 +18,10 @@ use Illuminate\Support\Str;
  */
 final class SaveRole
 {
-    public function __construct(private readonly PermissionResolver $permissions) {}
+    public function __construct(
+        private readonly PermissionResolver $permissions,
+        private readonly AuditLogger $audit,
+    ) {}
 
     /**
      * @param  list<Permission>  $permissions
@@ -37,7 +41,19 @@ final class SaveRole
             $role->description = $description;
             $role->save();
 
+            $before = $role->permissions()->map(fn (Permission $p) => $p->value)->sort()->values()->all();
             $role->syncPermissions($permissions);
+            $after = $role->permissions()->map(fn (Permission $p) => $p->value)->sort()->values()->all();
+
+            // Permissions live in a pivot table, not as model attributes, so
+            // their changes are recorded explicitly.
+            if ($before !== $after) {
+                $this->audit->record('role.permissions_changed', $role,
+                    ['permissions' => array_values(array_diff($before, $after))],
+                    ['permissions' => array_values(array_diff($after, $before))],
+                );
+            }
+
             $this->permissions->flush();
 
             return $role;

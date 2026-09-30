@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ExpenseStatus;
 use App\Enums\PaymentMethod;
+use App\Support\Audit\Auditable;
 use App\Support\Money\Money;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -33,7 +34,7 @@ use Illuminate\Support\Carbon;
  */
 class Expense extends Model
 {
-    use BelongsToCompany, HasUlids;
+    use Auditable, BelongsToCompany, HasUlids;
 
     public const RECEIPT_DISK = 'local';
 

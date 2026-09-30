@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ProductStatus;
 use App\Enums\ProductType;
+use App\Support\Audit\Auditable;
 use App\Support\Money\Money;
 use App\Support\Tenancy\BelongsToCompany;
 use App\Support\Tenancy\TenantContext;
@@ -36,7 +37,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
-    use BelongsToCompany, HasFactory, HasUlids, SoftDeletes;
+    use Auditable, BelongsToCompany, HasFactory, HasUlids, SoftDeletes;
 
     public const MAX_IMAGES = 8;
 

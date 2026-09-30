@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Audit\Auditable;
 use App\Support\Tenancy\BelongsToCompany;
 use Database\Factories\WarehouseFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,7 +27,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Warehouse extends Model
 {
     /** @use HasFactory<WarehouseFactory> */
-    use BelongsToCompany, HasFactory, HasUlids, SoftDeletes;
+    use Auditable, BelongsToCompany, HasFactory, HasUlids, SoftDeletes;
 
     protected $fillable = ['code', 'name', 'address', 'city', 'is_active'];
 

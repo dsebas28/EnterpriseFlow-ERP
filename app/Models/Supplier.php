@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PartyStatus;
+use App\Support\Audit\Auditable;
 use App\Support\Tenancy\BelongsToCompany;
 use Database\Factories\SupplierFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -29,7 +30,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Supplier extends Model
 {
     /** @use HasFactory<SupplierFactory> */
-    use BelongsToCompany, HasFactory, HasUlids, SoftDeletes;
+    use Auditable, BelongsToCompany, HasFactory, HasUlids, SoftDeletes;
 
     protected $fillable = [
         'kind', 'name', 'tax_id', 'contact_name', 'email', 'phone',

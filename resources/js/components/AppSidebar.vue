@@ -18,6 +18,7 @@ import {
     Package,
     Receipt,
     ReceiptText,
+    ScrollText,
     Truck,
     Users,
     Wallet,
@@ -77,6 +78,7 @@ const teamNavItems = computed(() =>
     [
         { title: 'Members', url: '/team/members', icon: Users, visible: can('users.manage') },
         { title: 'Roles & permissions', url: '/team/roles', icon: KeyRound, visible: canAny('roles.manage', 'users.manage') },
+        { title: 'Audit trail', url: '/audit', icon: ScrollText, visible: can('audit.view') },
     ].filter((item) => item.visible),
 );
 </script>

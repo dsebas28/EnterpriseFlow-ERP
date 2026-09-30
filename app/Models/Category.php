@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Audit\Auditable;
 use App\Support\Tenancy\BelongsToCompany;
 use Database\Factories\CategoryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Category extends Model
 {
     /** @use HasFactory<CategoryFactory> */
-    use BelongsToCompany, HasFactory, SoftDeletes;
+    use Auditable, BelongsToCompany, HasFactory, SoftDeletes;
 
     protected $fillable = ['parent_id', 'name', 'slug', 'description'];
 

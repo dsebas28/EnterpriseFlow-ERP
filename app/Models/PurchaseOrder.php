@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PurchaseOrderStatus;
 use App\Exceptions\InvalidStateTransition;
+use App\Support\Audit\Auditable;
 use App\Support\Money\Money;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -37,7 +38,7 @@ use Illuminate\Support\Carbon;
  */
 class PurchaseOrder extends Model
 {
-    use BelongsToCompany, HasUlids;
+    use Auditable, BelongsToCompany, HasUlids;
 
     /**
      * Written exclusively by the purchasing actions (status, totals and

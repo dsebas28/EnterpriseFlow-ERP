@@ -152,6 +152,15 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/audit.log'),
+            'level' => 'info',
+            'days' => env('LOG_AUDIT_DAYS', 365),
+            'formatter' => JsonFormatter::class,
+            'replace_placeholders' => true,
+        ],
+
         'security' => [
             'driver' => 'daily',
             'path' => storage_path('logs/security.log'),
