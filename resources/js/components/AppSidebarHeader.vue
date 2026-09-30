@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import NotificationBell from '@/components/NotificationBell.vue';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItemType } from '@/types';
@@ -36,6 +37,9 @@ withDefaults(
                     </BreadcrumbList>
                 </Breadcrumb>
             </template>
+        </div>
+        <div class="ml-auto flex items-center">
+            <NotificationBell />
         </div>
     </header>
 </template>

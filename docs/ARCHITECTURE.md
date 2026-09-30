@@ -377,6 +377,18 @@ sequenceDiagram
 - **Aislamiento de tenant:** `webhook_events` es una tabla de plataforma (la empresa solo se conoce al interpretar el payload). El `PaymentGatewayHandler` busca la factura **dentro** de la empresa indicada en el evento, con el scope fail-closed: un evento que nombre a otra empresa no puede tocar la factura (queda `failed: Unknown invoice`).
 - **Handlers por proveedor** (`config/webhooks.php` → `WebhookHandler`): `payments` registra cobros con tarjeta (`payment.succeeded`) usando la misma Action `RecordPayment` que la UI (bloqueo de la factura, sin sobrepagos, numeración, auditoría, evento `PaymentReceived`); tipos no soportados → `ignored`.
 
+### 9.4 Notificaciones
+
+- **Eventos de dominio → notificaciones** (`SendBusinessNotifications`, auto-descubierto): stock bajo (al cruzar el mínimo, una vez), venta confirmada, orden de compra enviada a aprobación / aprobada, facturas vencidas (**un resumen por ejecución** del job horario: solo las que cambiaron en esa corrida, nunca repetidas), pago recibido, nuevo miembro. Además: invitación (a usuarios existentes también en la campana), exportación lista/fallida (solo a quien la pidió) y alertas de sistema (evento de webhook que no se pudo aplicar).
+- **Destinatarios por permiso**, no por rol fijo: `NotificationCategory::permission()` define quién puede actuar (p. ej. stock bajo → `purchases.create`, aprobación → `purchases.approve`, vencidas → `invoices.view`, alertas → `company.settings`). `Notifier` resuelve en **una consulta** los usuarios activos con membresía activa cuyo rol concede el permiso (Owner incluido); nadie recibe información que no podría ver, y el autor de la acción no se notifica a sí mismo.
+- **Canales:** `database` (campana) y `mail`, en la cola `notifications`. Preferencias por usuario y categoría (`users.notification_preferences`, JSON): claves ausentes usan los valores por defecto de la categoría (email activado para lo que requiere acción: stock bajo, aprobaciones, vencidas, alertas; desactivado para lo informativo), así que añadir una categoría no requiere migrar datos. Las invitaciones son transaccionales y no se pueden desactivar.
+- **Snapshot de valores planos** en el constructor (títulos, importes formateados, URLs): el worker no tiene tenant y el mensaje debe describir los hechos tal como ocurrieron (misma lección que 7.5).
+- **Contexto de tenant explícito:** el listener toma la empresa del modelo del evento, no del contexto ambiental, porque los eventos también ocurren en jobs, webhooks y consola (p. ej. un pago aplicado por webhook se confirma fuera de `TenantContext::run`). Un fallo al notificar se reporta con `rescue()` y **nunca** revierte ni rompe la operación de negocio, que ya se confirmó (eventos after-commit).
+- **Multiempresa en la campana:** la tabla `notifications` tiene `company_id` propio (canal `TenantDatabaseChannel`, enlazado en lugar del `DatabaseChannel` de Laravel). El feed muestra las notificaciones de la empresa activa más las personales (`company_id` nulo) y siempre parte de la relación del propio usuario: ids ajenos → `404`.
+- **UI:** campana en el header con contador (prop compartida `unreadNotifications` + sondeo cada 60 s solo con la pestaña visible), centro de notificaciones con filtro *unread*, "marcar todo como leído", y apertura que marca como leída y redirige solo a URLs del propio host. Preferencias en *Settings → Notifications*.
+- **API:** `GET /api/v1/notifications` (`unread`, `per_page`), `POST /notifications/{id}/read`, `POST /notifications/read-all`.
+- **Retención:** `model:prune` elimina las leídas con más de 90 días; las no leídas se conservan.
+
 ## 10. API
 
 - **Versionada por prefijo** `/api/v1` (`routes/api.php`), controladores delgados en `Http/Controllers/Api/V1`. Reutilizan exactamente las mismas Actions, Form Requests, Policies, Query Objects, Resources y definiciones de reportes que la web: una regla de negocio existe una sola vez.
@@ -397,7 +409,7 @@ sequenceDiagram
 
 - **Listados:** paginación, filtros, búsqueda y ordenación por *allow-list* validadas (`sort=-price`, `per_page` acotado); nunca columnas arbitrarias del cliente.
 - **Rate limiting:** `api` 60 req/min por usuario (o IP); `api-login` 5/min por email+IP y 20/min por IP.
-- **Endpoints v1:** `products` (CRUD), `customers` (index/store/show), `sales` (index/store/show, `confirm`, `cancel`; `"confirm": true` crea y confirma en una llamada), `purchases` (index/store/show), `inventory` (stock por producto/almacén), `reports` (catálogo), `reports/sales` y `reports/{key}`.
+- **Endpoints v1:** `notifications` (listado, marcar leída / todas), `products` (CRUD), `customers` (index/store/show), `sales` (index/store/show, `confirm`, `cancel`; `"confirm": true` crea y confirma en una llamada), `purchases` (index/store/show), `inventory` (stock por producto/almacén), `reports` (catálogo), `reports/sales` y `reports/{key}`.
 - **OpenAPI 3.1** inferido del código con `dedoc/scramble` (Form Requests, Resources, docblocks): UI en `/docs/api` (restringida fuera de `local`) y especificación versionada en `docs/openapi.json` (`php artisan scramble:export`). `TenantRule` resuelve la empresa de forma perezosa —al validar, no al construir la regla— para que el generador lea las reglas sin tenant sin relajar el *fail-closed*.
 
 ## 11. Observabilidad
@@ -444,5 +456,5 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 12. ✅ Auditoría
 13. ✅ API v1 + OpenAPI
 14. ✅ Jobs/colas, scheduler, webhooks idempotentes
-15. Notificaciones
+15. ✅ Notificaciones
 16. Docker, CI/CD, documentación final

@@ -4,6 +4,7 @@ namespace App\Actions\Purchasing;
 
 use App\Enums\PurchaseOrderStatus;
 use App\Events\PurchaseOrderApproved;
+use App\Events\PurchaseOrderSubmitted;
 use App\Exceptions\BusinessRuleViolation;
 use App\Models\PurchaseOrder;
 use App\Models\User;
@@ -18,11 +19,15 @@ final class ChangePurchaseOrderStatus
 {
     public function submit(PurchaseOrder $order): PurchaseOrder
     {
-        return $this->transition($order, PurchaseOrderStatus::Pending, function (PurchaseOrder $locked): void {
+        $submitted = $this->transition($order, PurchaseOrderStatus::Pending, function (PurchaseOrder $locked): void {
             if (! $locked->items()->exists()) {
                 throw new BusinessRuleViolation('Add at least one line before submitting the order.');
             }
         });
+
+        PurchaseOrderSubmitted::dispatch($submitted);
+
+        return $submitted;
     }
 
     public function approve(PurchaseOrder $order, User $approver): PurchaseOrder

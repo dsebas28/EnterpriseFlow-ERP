@@ -3,7 +3,9 @@
 namespace App\Jobs;
 
 use App\Jobs\Concerns\TenantAware;
+use App\Models\Company;
 use App\Models\ReportExport;
+use App\Notifications\ReportExportFinished;
 use App\Reports\Export\ReportWriter;
 use App\Reports\ReportFilters;
 use App\Reports\ReportRegistry;
@@ -61,15 +63,39 @@ class GenerateReportExport implements ShouldQueue
         ])->save();
 
         Log::channel('queue')->info('report.exported', ['export_id' => $export->id, 'report' => $export->report, 'rows' => $result['rows']]);
+
+        $this->notifyRequester($export, $report->title(), $company);
     }
 
     public function failed(Throwable $exception): void
     {
         Log::channel('queue')->error('report.export_failed', ['export_id' => $this->exportId, 'error' => $exception->getMessage()]);
 
-        $this->inTenant(fn () => ReportExport::whereKey($this->exportId)->update([
-            'status' => 'failed',
-            'error' => mb_substr($exception->getMessage(), 0, 250),
-        ]));
+        $this->inTenant(function (Company $company) use ($exception): void {
+            $export = ReportExport::find($this->exportId);
+
+            if ($export === null) {
+                return;
+            }
+
+            $export->forceFill(['status' => 'failed', 'error' => mb_substr($exception->getMessage(), 0, 250)])->save();
+
+            $title = app(ReportRegistry::class)->find($export->report)?->title() ?? $export->report;
+            $this->notifyRequester($export, $title, $company);
+        });
+    }
+
+    /**
+     * Personal notification (the export belongs to whoever requested it).
+     */
+    private function notifyRequester(ReportExport $export, string $reportTitle, Company $company): void
+    {
+        rescue(function () use ($export, $reportTitle, $company): void {
+            $user = $export->user;
+
+            if ($user?->isActive()) {
+                $user->notify(new ReportExportFinished($company, $export, $reportTitle));
+            }
+        }, report: true);
     }
 }

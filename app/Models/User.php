@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CompanyStatus;
 use App\Enums\MembershipStatus;
+use App\Enums\NotificationCategory;
 use App\Enums\Permission;
 use App\Enums\UserStatus;
 use App\Services\Authorization\PermissionResolver;
@@ -11,6 +12,7 @@ use App\Support\Tenancy\TenantContext;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -25,6 +27,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property bool $is_super_admin
  * @property Carbon|null $email_verified_at
  * @property Carbon|null $last_login_at
+ * @property array<string, array{database?: bool, mail?: bool}>|null $notification_preferences
  */
 class User extends Authenticatable
 {
@@ -68,6 +71,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'status' => UserStatus::class,
             'is_super_admin' => 'boolean',
+            'notification_preferences' => 'array',
         ];
     }
 
@@ -156,5 +160,43 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return $this->is_super_admin;
+    }
+
+    /**
+     * In-app notifications, newest first (prunable model, see Notification).
+     *
+     * @return MorphMany<Notification, $this>
+     */
+    public function notifications(): MorphMany
+    {
+        return $this->morphMany(Notification::class, 'notifiable')->latest();
+    }
+
+    /**
+     * Whether the user wants this category on this channel; unset
+     * preferences fall back to the category defaults.
+     *
+     * @param  'database'|'mail'  $channel
+     */
+    public function wantsNotification(NotificationCategory $category, string $channel): bool
+    {
+        if (! $category->isConfigurable()) {
+            return true;
+        }
+
+        $default = $channel === 'mail' ? $category->mailByDefault() : true;
+
+        return (bool) ($this->notification_preferences[$category->value][$channel] ?? $default);
+    }
+
+    /**
+     * @return list<'database'|'mail'>
+     */
+    public function notificationChannels(NotificationCategory $category): array
+    {
+        return array_values(array_filter(
+            ['database', 'mail'],
+            fn (string $channel) => $this->wantsNotification($category, $channel),
+        ));
     }
 }
