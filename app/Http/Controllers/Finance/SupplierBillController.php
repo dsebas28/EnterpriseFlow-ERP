@@ -7,9 +7,12 @@ use App\Actions\Invoicing\RegisterSupplierBill;
 use App\Enums\InvoiceStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Finance\RegisterSupplierBillRequest;
+use App\Http\Resources\PaymentResource;
 use App\Http\Resources\SupplierBillResource;
+use App\Models\Payment;
 use App\Models\PurchaseOrder;
 use App\Models\SupplierBill;
+use App\Support\Finance\PaymentFormOptions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -66,11 +69,16 @@ class SupplierBillController extends Controller
     {
         Gate::authorize('view', $bill);
 
-        $bill->load(['items', 'supplier', 'purchaseOrder', 'creator']);
+        $bill->load(['items', 'supplier', 'purchaseOrder', 'creator', 'payments.creator', 'payments.voider']);
+        $user = $request->user();
 
         return Inertia::render('finance/bills/Show', [
             'bill' => SupplierBillResource::make($bill),
+            'payments' => PaymentResource::collection($bill->payments),
+            'paymentForm' => PaymentFormOptions::make(),
             'can' => [
+                'pay' => $bill->status->isOpen() && ($user?->can('create', Payment::class) ?? false),
+                'voidPayments' => $user?->can('void', new Payment) ?? false,
                 'cancel' => $bill->status->canTransitionTo(InvoiceStatus::Cancelled)
                     && $bill->amount_paid === 0
                     && ($request->user()?->can('cancel', $bill) ?? false),

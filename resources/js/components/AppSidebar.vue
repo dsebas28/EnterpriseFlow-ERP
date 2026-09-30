@@ -5,6 +5,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { usePermissions } from '@/composables/usePermissions';
 import { Link } from '@inertiajs/vue3';
 import {
+    Banknote,
     Boxes,
     ClipboardList,
     Contact,
@@ -59,6 +60,7 @@ const financeNavItems = computed(() =>
     [
         { title: 'Invoices', url: '/finance/invoices', icon: FileText, visible: can('invoices.view') },
         { title: 'Supplier bills', url: '/finance/bills', icon: ReceiptText, visible: can('invoices.view') },
+        { title: 'Payments', url: '/finance/payments', icon: Banknote, visible: can('payments.view') },
     ].filter((item) => item.visible),
 );
 

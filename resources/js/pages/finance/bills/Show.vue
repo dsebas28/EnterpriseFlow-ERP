@@ -2,6 +2,7 @@
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import InputError from '@/components/InputError.vue';
 import PageAlerts from '@/components/PageAlerts.vue';
+import PaymentsPanel, { type PaymentRow } from '@/components/PaymentsPanel.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -37,7 +38,9 @@ interface Bill {
 
 const props = defineProps<{
     bill: { data: Bill };
-    can: { cancel: boolean };
+    payments: { data: PaymentRow[] };
+    paymentForm: { methods: { value: string; label: string }[]; today: string; currency: { code: string; decimals: number } };
+    can: { cancel: boolean; pay: boolean; voidPayments: boolean };
 }>();
 
 const bill = computed(() => props.bill.data);
@@ -119,6 +122,15 @@ const formatDate = (value: string) => new Date(`${value}T00:00:00`).toLocaleDate
                     </table>
                 </div>
                 <aside class="space-y-4">
+                    <PaymentsPanel
+                        v-if="bill.status !== 'draft' && bill.status !== 'cancelled'"
+                        :payments="payments.data"
+                        :balance="bill.balance_due"
+                        :store-url="route('finance.bills.payments.store', bill.id)"
+                        :options="paymentForm"
+                        :can-pay="can.pay"
+                        :can-void="can.voidPayments"
+                    />
                     <dl class="space-y-2 rounded-lg border p-4 text-sm">
                         <div class="flex justify-between">
                             <dt class="text-muted-foreground">Bill date</dt>

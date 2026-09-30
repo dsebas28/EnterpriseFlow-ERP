@@ -46,6 +46,23 @@ enum InvoiceStatus: string
     }
 
     /**
+     * Payment-driven status of an open document, derived from its amounts
+     * (so voiding a payment naturally moves it back). Not a user transition.
+     */
+    public static function fromSettlement(int $total, int $paid, string $dueDate, string $today): self
+    {
+        if ($paid >= $total) {
+            return self::Paid;
+        }
+
+        if ($dueDate < $today) {
+            return self::Overdue;
+        }
+
+        return $paid > 0 ? self::PartiallyPaid : self::Issued;
+    }
+
+    /**
      * Open documents: money is (still) owed.
      *
      * @return list<string>
