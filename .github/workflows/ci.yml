@@ -1,0 +1,229 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+# A newer push to the same branch cancels the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PHP_VERSION: '8.3'
+  NODE_VERSION: '22'
+  PHP_EXTENSIONS: pdo_pgsql, pdo_sqlite, intl, gd, zip, bcmath, redis
+
+jobs:
+  backend-quality:
+    name: Backend quality (Pint, Larastan, audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Code style (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Static analysis (Larastan, level 6)
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress --error-format=github
+
+      - name: Known vulnerabilities (Composer)
+        run: composer audit --no-interaction
+
+  frontend:
+    name: Frontend (Prettier, ESLint, vue-tsc, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Ziggy's JS is imported from vendor/, so PHP dependencies are needed.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+          coverage: none
+
+      - run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+      - run: npm run format:check
+      - run: npx eslint .
+      - run: npm run typecheck
+      - run: npm run build
+
+      - name: Known vulnerabilities (npm, high and above)
+        run: npm audit --audit-level=high
+
+  tests:
+    name: Tests (${{ matrix.database }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # SQLite for fast feedback; PostgreSQL is what production runs (and
+        # where the append-only triggers and locking are exercised for real).
+        database: [sqlite, pgsql]
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: enterpriseflow_test
+          POSTGRES_USER: enterpriseflow
+          POSTGRES_PASSWORD: secret
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U enterpriseflow"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+
+    env:
+      DB_CONNECTION: ${{ matrix.database }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: ${{ matrix.database == 'pgsql' && 'enterpriseflow_test' || ':memory:' }}
+      DB_USERNAME: enterpriseflow
+      DB_PASSWORD: secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+          coverage: ${{ matrix.database == 'pgsql' && 'pcov' || 'none' }}
+          tools: composer:v2
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+
+      - name: Run tests (SQLite)
+        if: matrix.database == 'sqlite'
+        run: vendor/bin/pest --parallel
+
+      - name: Run tests with coverage (PostgreSQL)
+        if: matrix.database == 'pgsql'
+        run: vendor/bin/pest --parallel --coverage --min=90 --coverage-clover=coverage.xml
+
+      - name: Upload coverage report
+        if: matrix.database == 'pgsql'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-clover
+          path: coverage.xml
+          retention-days: 14
+
+  docker:
+    name: Docker build and smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          sed -i "s|^APP_KEY=.*|APP_KEY=base64:$(openssl rand -base64 32)|" .env
+          sed -i "s|^APP_ENV=.*|APP_ENV=production|; s|^APP_DEBUG=.*|APP_DEBUG=false|" .env
+
+      - name: Build and start the stack (waits for every healthcheck)
+        run: docker compose up -d --build --wait --wait-timeout 300
+
+      - name: Smoke test
+        run: |
+          set -e
+          curl -fsS http://localhost:8080/health | tee /dev/stderr | grep -q '"status":"ok"'
+          curl -fsS -o /dev/null http://localhost:8080/login
+          # Demo data was seeded and the API answers with the JSON envelope.
+          curl -fsS -X POST http://localhost:8080/api/v1/auth/login \
+            -H 'Accept: application/json' -H 'Content-Type: application/json' \
+            -d '{"email":"owner@demo.test","password":"password","device_name":"ci"}' \
+            | grep -q '"success":true'
+          # Only the front controller executes; dotfiles are never served.
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/.env)" = 403
+
+      - name: Container logs
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v
+
+  publish:
+    name: Publish images (GHCR)
+    needs: [backend-quality, frontend, tests, docker]
+    # Only for main and version tags, never for pull requests.
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        target: [app, web]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/enterpriseflow-${{ matrix.target }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=sha,format=short
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}

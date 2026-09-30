@@ -442,7 +442,23 @@ El código evita SQL específico de un motor salvo donde se justifica (p. ej. `l
 
 **Probes:** `GET /up` (liveness, Laravel) y `GET /health` (readiness): base de datos, caché (ida y vuelta), almacenamiento y Redis si algún driver lo usa; `200`/`503` con latencias, sin detalles de error (van al log).
 
-### 12.2 Estrategia de tests
+### 12.2 CI/CD (GitHub Actions)
+
+Un único workflow (`.github/workflows/ci.yml`) en cada push y pull request; una ejecución nueva cancela la anterior de la misma rama.
+
+| Job | Qué valida |
+|---|---|
+| `backend-quality` | Pint, Larastan nivel 6 (anotaciones en el diff) y `composer audit` |
+| `frontend` | Prettier, ESLint, `vue-tsc`, build de producción y `npm audit` (high+) |
+| `tests` (matriz) | Suite completa en **SQLite** y en **PostgreSQL 16** (service), en paralelo; en PostgreSQL con cobertura pcov, umbral mínimo 90 % y reporte Clover como artefacto |
+| `docker` | Construye las imágenes, levanta el stack completo esperando todos los healthchecks y hace smoke test: `/health` en `ok`, login web, login de la API contra los datos demo y `.env` bloqueado |
+| `publish` | Solo en `main` y tags `v*`, tras pasar todo lo anterior: publica `enterpriseflow-app` y `enterpriseflow-web` en GHCR (tags de rama, semver y SHA), con caché de capas |
+
+Dependabot propone actualizaciones semanales (Composer, npm) y mensuales (Actions, imágenes base).
+
+**Por qué PostgreSQL en CI además de SQLite:** ejecutar la suite en PostgreSQL antes de configurar CI encontró tres diferencias reales que SQLite ocultaba: la búsqueda de miembros usaba `LIKE`, que en PostgreSQL distingue mayúsculas (ahora `whereLike`, que compila a `ILIKE`); las funciones de los triggers append-only sobreviven a `migrate:fresh`, que solo borra tablas (ahora `CREATE OR REPLACE` + `DROP TRIGGER IF EXISTS`); y en PostgreSQL una sentencia fallida aborta la transacción que la envuelve, por lo que el alta idempotente de webhooks usa su propio savepoint antes de buscar el duplicado.
+
+### 12.3 Estrategia de tests
 
 **527 tests (Pest 4), ~2 800 aserciones, cobertura de líneas 96,7 %** (`app/`, medida con pcov). Lo que no cubre SQLite (ramas PostgreSQL/MySQL de `DateBucket`) lo ejercita CI contra PostgreSQL.
 
@@ -490,4 +506,6 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 13. ✅ API v1 + OpenAPI
 14. ✅ Jobs/colas, scheduler, webhooks idempotentes
 15. ✅ Notificaciones
-16. Docker, CI/CD, documentación final
+16. ✅ Tests: barridos de seguridad, reglas de arquitectura, cobertura
+17. ✅ Docker y CI/CD
+18. Demo, README y documentación final
