@@ -11,7 +11,9 @@ use App\Http\Requests\Purchasing\SavePurchaseOrderRequest;
 use App\Http\Resources\PurchaseOrderResource;
 use App\Http\Resources\WarehouseResource;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderItem;
 use App\Models\Supplier;
+use App\Models\SupplierBill;
 use App\Models\Warehouse;
 use App\Queries\PurchaseOrderIndexQuery;
 use App\Support\Money\Currency;
@@ -60,13 +62,17 @@ class PurchaseOrderController extends Controller
     {
         Gate::authorize('view', $purchaseOrder);
 
-        $purchaseOrder->load(['supplier', 'warehouse', 'items.product', 'receipts.items', 'receipts.warehouse', 'receipts.receiver', 'creator', 'approver']);
+        $purchaseOrder->load(['supplier', 'warehouse', 'items.product', 'receipts.items', 'receipts.warehouse', 'receipts.receiver', 'bills', 'creator', 'approver']);
         $user = $request->user();
+        $today = now($this->tenant->companyOrFail()->timezone);
 
         return Inertia::render('purchasing/orders/Show', [
             'order' => PurchaseOrderResource::make($purchaseOrder),
             'warehouses' => WarehouseResource::collection(Warehouse::active()->orderBy('name')->get()),
+            'billDefaults' => ['bill_date' => $today->toDateString(), 'due_date' => $today->copy()->addDays(30)->toDateString()],
             'can' => [
+                'bill' => $purchaseOrder->items->contains(fn (PurchaseOrderItem $item) => $item->billableQuantity() > 0)
+                    && ($user?->can('create', SupplierBill::class) ?? false),
                 'edit' => $purchaseOrder->status->isEditable() && ($user?->can('update', $purchaseOrder) ?? false),
                 'submit' => $purchaseOrder->status->canTransitionTo(PurchaseOrderStatus::Pending) && ($user?->can('update', $purchaseOrder) ?? false),
                 'approve' => $purchaseOrder->status->canTransitionTo(PurchaseOrderStatus::Approved) && ($user?->can('approve', $purchaseOrder) ?? false),

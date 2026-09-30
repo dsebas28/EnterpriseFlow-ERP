@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $description
  * @property int $quantity
  * @property int $received_quantity
+ * @property int $billed_quantity
  * @property int $unit_cost
  * @property int $tax_rate
  * @property int $line_subtotal
@@ -32,6 +33,7 @@ class PurchaseOrderItem extends Model
         return [
             'quantity' => 'integer',
             'received_quantity' => 'integer',
+            'billed_quantity' => 'integer',
             'unit_cost' => 'integer',
             'tax_rate' => 'integer',
             'line_subtotal' => 'integer',
@@ -43,6 +45,15 @@ class PurchaseOrderItem extends Model
     public function remainingQuantity(): int
     {
         return max(0, $this->quantity - $this->received_quantity);
+    }
+
+    /**
+     * Received but not yet billed by the supplier: the most a new bill may
+     * charge for this line (two-way match between receipts and bills).
+     */
+    public function billableQuantity(): int
+    {
+        return max(0, $this->received_quantity - $this->billed_quantity);
     }
 
     /**

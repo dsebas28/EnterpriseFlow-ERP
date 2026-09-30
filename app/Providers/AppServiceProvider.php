@@ -10,6 +10,7 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseReceipt;
 use App\Models\Sale;
 use App\Models\Supplier;
+use App\Models\SupplierBill;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Database\Eloquent\Model;
@@ -68,6 +69,7 @@ class AppServiceProvider extends ServiceProvider
             'customer' => Customer::class,
             'sale' => Sale::class,
             'invoice' => Invoice::class,
+            'supplier_bill' => SupplierBill::class,
         ]);
     }
 
