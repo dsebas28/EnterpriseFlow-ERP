@@ -15,6 +15,7 @@ import {
     LayoutGrid,
     Package,
     Receipt,
+    ReceiptText,
     Truck,
     Users,
     Warehouse,
@@ -55,7 +56,10 @@ const salesNavItems = computed(() =>
 );
 
 const financeNavItems = computed(() =>
-    [{ title: 'Invoices', url: '/finance/invoices', icon: FileText, visible: can('invoices.view') }].filter((item) => item.visible),
+    [
+        { title: 'Invoices', url: '/finance/invoices', icon: FileText, visible: can('invoices.view') },
+        { title: 'Supplier bills', url: '/finance/bills', icon: ReceiptText, visible: can('invoices.view') },
+    ].filter((item) => item.visible),
 );
 
 const purchasingNavItems = computed(() =>

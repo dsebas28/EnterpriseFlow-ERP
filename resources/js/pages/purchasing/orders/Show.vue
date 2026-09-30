@@ -11,7 +11,7 @@ import { formatMoney, type MoneyValue } from '@/composables/useMoney';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem, Warehouse } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, Ban, CheckCircle2, PackageCheck, Pencil, Send, Trash2, Undo2 } from 'lucide-vue-next';
+import { ArrowLeft, Ban, CheckCircle2, PackageCheck, Pencil, ReceiptText, Send, Trash2, Undo2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 interface Item {
@@ -22,6 +22,8 @@ interface Item {
     quantity: number;
     received_quantity: number;
     remaining_quantity: number;
+    billed_quantity: number;
+    billable_quantity: number;
     unit_cost: MoneyValue;
     tax_rate: string;
     line_subtotal: MoneyValue;
@@ -60,15 +62,51 @@ interface Order {
         units: number;
         notes: string | null;
     }[];
+    bills: { id: string; number: string; supplier_reference: string; status: string; status_label: string; total: MoneyValue; due_date: string }[];
 }
 
 const props = defineProps<{
     order: { data: Order };
     warehouses: { data: Warehouse[] };
-    can: { edit: boolean; submit: boolean; approve: boolean; returnToDraft: boolean; receive: boolean; cancel: boolean; delete: boolean };
+    billDefaults: { bill_date: string; due_date: string };
+    can: {
+        bill: boolean;
+        edit: boolean;
+        submit: boolean;
+        approve: boolean;
+        returnToDraft: boolean;
+        receive: boolean;
+        cancel: boolean;
+        delete: boolean;
+    };
 }>();
 
 const order = computed(() => props.order.data);
+
+// Register supplier bill (only received, not yet billed quantities)
+const billOpen = ref(false);
+const billForm = useForm<{
+    supplier_reference: string;
+    bill_date: string;
+    due_date: string;
+    notes: string;
+    lines: { item_id: number; quantity: number }[];
+}>({
+    supplier_reference: '',
+    bill_date: props.billDefaults.bill_date,
+    due_date: props.billDefaults.due_date,
+    notes: '',
+    lines: [],
+});
+const openBill = () => {
+    billForm.reset();
+    billForm.clearErrors();
+    billForm.lines = order.value.items
+        .filter((item) => item.billable_quantity > 0)
+        .map((item) => ({ item_id: item.id, quantity: item.billable_quantity }));
+    billOpen.value = true;
+};
+const registerBill = () => billForm.post(route('purchasing.orders.bills.store', order.value.id), { onSuccess: () => (billOpen.value = false) });
 
 const breadcrumbs = computed<BreadcrumbItem[]>(() => [
     { title: 'Purchasing', href: '/purchasing/orders' },
@@ -159,6 +197,7 @@ const selectClass =
                     </Button>
                     <Button v-if="can.approve" @click="post('purchasing.orders.approve')"><CheckCircle2 class="mr-2 h-4 w-4" /> Approve</Button>
                     <Button v-if="can.receive" @click="openReceive"><PackageCheck class="mr-2 h-4 w-4" /> Receive goods</Button>
+                    <Button v-if="can.bill" variant="outline" @click="openBill"><ReceiptText class="mr-2 h-4 w-4" /> Register supplier bill</Button>
                     <Button v-if="can.cancel" variant="outline" class="text-red-600" @click="cancelOpen = true"
                         ><Ban class="mr-2 h-4 w-4" /> Cancel</Button
                     >
@@ -216,6 +255,24 @@ const selectClass =
                                 </tr>
                             </tfoot>
                         </table>
+                    </div>
+
+                    <div v-if="order.bills.length" class="rounded-lg border">
+                        <h3 class="border-b px-4 py-3 text-sm font-medium">Supplier bills</h3>
+                        <ul class="divide-y text-sm">
+                            <li v-for="bill in order.bills" :key="bill.id" class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                                <div>
+                                    <Link :href="route('finance.bills.show', bill.id)" class="font-mono font-medium hover:underline">{{
+                                        bill.number
+                                    }}</Link>
+                                    <p class="text-muted-foreground">Ref. {{ bill.supplier_reference }} · due {{ formatDate(bill.due_date) }}</p>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <StatusBadge :status="bill.status" :label="bill.status_label" />
+                                    <span class="tabular-nums">{{ formatMoney(bill.total) }}</span>
+                                </div>
+                            </li>
+                        </ul>
                     </div>
 
                     <div v-if="order.receipts.length" class="rounded-lg border">
@@ -287,6 +344,66 @@ const selectClass =
                 </aside>
             </div>
         </div>
+
+        <!-- Register supplier bill -->
+        <Dialog v-model:open="billOpen">
+            <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                <form class="space-y-5" @submit.prevent="registerBill">
+                    <DialogHeader>
+                        <DialogTitle>Register supplier bill · {{ order.number }}</DialogTitle>
+                        <DialogDescription
+                            >Only goods already received and not yet billed can be billed, at the order's agreed cost.</DialogDescription
+                        >
+                    </DialogHeader>
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <div class="grid gap-2">
+                            <Label for="b-ref">Supplier invoice no.</Label>
+                            <Input id="b-ref" v-model="billForm.supplier_reference" required class="font-mono" />
+                            <InputError :message="billForm.errors.supplier_reference" />
+                        </div>
+                        <div class="grid gap-2">
+                            <Label for="b-date">Bill date</Label>
+                            <Input id="b-date" v-model="billForm.bill_date" type="date" required />
+                            <InputError :message="billForm.errors.bill_date" />
+                        </div>
+                        <div class="grid gap-2">
+                            <Label for="b-due">Due date</Label>
+                            <Input id="b-due" v-model="billForm.due_date" type="date" required />
+                            <InputError :message="billForm.errors.due_date" />
+                        </div>
+                    </div>
+                    <table class="w-full text-left text-sm">
+                        <thead class="border-b text-xs uppercase tracking-wide text-muted-foreground">
+                            <tr>
+                                <th class="py-2 font-medium">Product</th>
+                                <th class="py-2 text-right font-medium">Billable</th>
+                                <th class="w-28 py-2 pl-3 font-medium">Bill</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            <tr v-for="line in billForm.lines" :key="line.item_id">
+                                <td class="py-2">{{ itemById[line.item_id].description }}</td>
+                                <td class="py-2 text-right tabular-nums">{{ itemById[line.item_id].billable_quantity }}</td>
+                                <td class="py-2 pl-3">
+                                    <Input
+                                        v-model.number="line.quantity"
+                                        type="number"
+                                        min="0"
+                                        :max="itemById[line.item_id].billable_quantity"
+                                        step="1"
+                                        aria-label="Quantity to bill"
+                                    />
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <DialogFooter>
+                        <Button type="button" variant="secondary" @click="billOpen = false">Cancel</Button>
+                        <Button type="submit" :disabled="billForm.processing">Register bill</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
 
         <!-- Receive -->
         <Dialog v-model:open="receiveOpen">

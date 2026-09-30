@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseReceipt;
+use App\Models\SupplierBill;
 use App\Support\Money\BasisPoints;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -48,11 +49,22 @@ class PurchaseOrderResource extends JsonResource
                 'quantity' => $item->quantity,
                 'received_quantity' => $item->received_quantity,
                 'remaining_quantity' => $item->remainingQuantity(),
+                'billed_quantity' => $item->billed_quantity,
+                'billable_quantity' => $item->billableQuantity(),
                 'unit_cost' => MoneyResource::make($this->money($item->unit_cost)),
                 'tax_rate' => BasisPoints::toPercent($item->tax_rate),
                 'line_subtotal' => MoneyResource::make($this->money($item->line_subtotal)),
                 'line_tax' => MoneyResource::make($this->money($item->line_tax)),
                 'line_total' => MoneyResource::make($this->money($item->line_total)),
+            ])),
+            'bills' => $this->whenLoaded('bills', fn () => $this->bills->map(fn (SupplierBill $bill) => [
+                'id' => $bill->id,
+                'number' => $bill->number,
+                'supplier_reference' => $bill->supplier_reference,
+                'status' => $bill->status->value,
+                'status_label' => $bill->status->label(),
+                'total' => MoneyResource::make($this->money($bill->total)),
+                'due_date' => $bill->due_date->toDateString(),
             ])),
             'receipts' => $this->whenLoaded('receipts', fn () => $this->receipts->map(fn (PurchaseReceipt $receipt) => [
                 'id' => $receipt->id,

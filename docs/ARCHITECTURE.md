@@ -258,6 +258,29 @@ stateDiagram-v2
 - **Saldo del cliente** = Σ (`total − amount_paid`) de ventas `confirmed`/`partially_paid`, calculado en SQL (`withSum`) para el listado. `amount_paid` lo mantiene el módulo de pagos.
 - **Ficha de cliente:** historial de ventas, total vendido, saldo pendiente, última compra y notas internas (borrables por su autor o por quien puede editar el cliente).
 
+### 7.3 Facturación (cuentas por cobrar y por pagar)
+
+Ambos documentos comparten `InvoiceStatus`: `draft → issued → partially_paid → paid`, con `overdue` (calculado) y `cancelled`.
+
+**Facturas de cliente**
+- Se crean como borrador desde una venta confirmada, copiando sus líneas (snapshot). **El número legal (`INV-…`) y la fecha de emisión se asignan al emitir**, no al crear: los borradores descartados no consumen numeración.
+- **Una factura vigente por venta**, garantizado por un índice único parcial `(company_id, sale_id) WHERE status <> 'cancelled'`. Anular (motivo obligatorio, sin pagos) conserva el número y permite refacturar.
+- **Vencidas:** `invoices:mark-overdue` compara `due_date` con la fecha de hoy *en la zona horaria de cada empresa*; idempotente, pensado para el scheduler diario.
+- **PDF asíncrono:** al emitir se encola `GenerateInvoicePdf` (cola `documents`, 3 intentos con backoff) *después del commit*. El archivo va a un **disco privado** y se descarga por una ruta que autoriza (`view`) antes de servir el stream. `pdf_status` (`pending → ready | failed`) permite a la UI consultar el progreso; `failed()` marca el error y lo registra en el canal `queue`.
+
+**Facturas de proveedor**
+- Se registran desde una orden de compra y solo por lo **recibido y aún no facturado** (`received − billed` por línea): *two-way match* recepción ↔ factura, a costo pactado en la orden.
+- **Anti-duplicados:** el número de factura del proveedor es único por proveedor (índice parcial que excluye anuladas).
+- Anular libera las cantidades facturadas para registrar la factura correcta.
+
+### 7.4 Jobs con contexto de tenant
+
+Los workers no tienen sesión, así que un job debe saber para qué empresa trabaja:
+- El trait `TenantAware` captura `company_id` del `TenantContext` al crear el job y declara el *job middleware* `RestoreTenantContext`, que ejecuta `handle()` dentro de `TenantContext::run($company)`.
+- **Los jobs guardan IDs, no modelos:** `SerializesModels` rehidrata los modelos *antes* de que corra el middleware, cuando aún no hay empresa activa, y el scope fail-closed rechazaría la consulta.
+- `failed()` se ejecuta fuera del pipeline de middleware; el trait ofrece `inTenant()` para ese caso.
+- Las notificaciones encoladas usan el mismo principio (snapshot de valores escalares, ver §4.1).
+
 ## 8. Auditoría
 
 Trait `Auditable` en modelos sensibles → registra `created/updated/deleted/restored` con valores anteriores y nuevos (solo campos cambiados, excluyendo secretos), usuario, empresa, IP, user agent y URL. Acciones de dominio relevantes (cancelar venta, anular pago, cambiar roles) registran eventos explícitos. Además, los eventos de seguridad (login fallido, cambio de roles, cambio de empresa) se escriben en el canal de log `security`.
@@ -301,7 +324,7 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 | `laravel/sanctum` | Tokens de API y SPA auth (first-party). |
 | `pestphp/pest` | Tests más expresivos sobre PHPUnit. |
 | `larastan/larastan` | Análisis estático consciente de Eloquent. |
-| *(fase facturación)* `barryvdh/laravel-dompdf` | Laravel no genera PDF. |
+| `barryvdh/laravel-dompdf` | Laravel no genera PDF; se usa solo dentro de un job en cola. |
 | *(fase reportes)* `openspout/openspout` | XLSX en streaming con poca memoria; CSV se hace nativo. |
 | *(fase API)* `dedoc/scramble` | OpenAPI inferido del código, sin anotaciones duplicadas. |
 
@@ -315,7 +338,7 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 6. ✅ Inventario (ledger + proyección)
 7. ✅ Compras (proveedores, órdenes, aprobación, recepciones)
 8. ✅ Ventas (clientes, notas, confirmación con stock, cancelación compensatoria)
-9. Facturación (PDF)
+9. ✅ Facturación (clientes con PDF asíncrono, proveedores con two-way match)
 10. Pagos
 11. Gastos y reportes
 12. Auditoría

@@ -239,7 +239,7 @@ it('marks open invoices past their due date as overdue', function () {
     expect(tenant()->run($this->company, fn () => $invoice->fresh()->status))->toBe(InvoiceStatus::Issued);
 
     $this->travelTo('2026-10-30 09:00:00');
-    $this->artisan('invoices:mark-overdue')->expectsOutputToContain('1 invoices marked overdue')->assertSuccessful();
+    $this->artisan('invoices:mark-overdue')->expectsOutputToContain('1 invoices and 0 supplier bills marked overdue')->assertSuccessful();
 
     expect(tenant()->run($this->company, fn () => $invoice->fresh()->status))->toBe(InvoiceStatus::Overdue);
 });

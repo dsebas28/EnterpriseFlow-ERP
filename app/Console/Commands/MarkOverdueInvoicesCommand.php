@@ -11,7 +11,7 @@ class MarkOverdueInvoicesCommand extends Command
 {
     protected $signature = 'invoices:mark-overdue {--company= : Only process this company id}';
 
-    protected $description = 'Flag open invoices whose due date has passed as overdue';
+    protected $description = 'Flag open customer invoices and supplier bills whose due date has passed as overdue';
 
     public function handle(TenantContext $tenant, MarkOverdueInvoices $markOverdue): int
     {
@@ -19,18 +19,19 @@ class MarkOverdueInvoicesCommand extends Command
             ->when($this->option('company'), fn ($query, $id) => $query->whereKey($id))
             ->get();
 
-        $total = 0;
+        $totals = ['invoices' => 0, 'bills' => 0];
 
         foreach ($companies as $company) {
-            $count = $tenant->run($company, fn () => $markOverdue->handle());
-            $total += $count;
+            $counts = $tenant->run($company, fn () => $markOverdue->handle());
+            $totals['invoices'] += $counts['invoices'];
+            $totals['bills'] += $counts['bills'];
 
-            if ($count > 0) {
-                $this->components->info("{$company->name}: {$count} invoices marked overdue.");
+            if ($counts['invoices'] + $counts['bills'] > 0) {
+                $this->components->info("{$company->name}: {$counts['invoices']} invoices and {$counts['bills']} supplier bills marked overdue.");
             }
         }
 
-        $this->components->info("Done. {$total} invoices marked overdue.");
+        $this->components->info("Done. {$totals['invoices']} invoices and {$totals['bills']} supplier bills marked overdue.");
 
         return self::SUCCESS;
     }

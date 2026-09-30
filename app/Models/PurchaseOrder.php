@@ -112,6 +112,14 @@ class PurchaseOrder extends Model
     }
 
     /**
+     * @return HasMany<SupplierBill, $this>
+     */
+    public function bills(): HasMany
+    {
+        return $this->hasMany(SupplierBill::class)->latest();
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function creator(): BelongsTo

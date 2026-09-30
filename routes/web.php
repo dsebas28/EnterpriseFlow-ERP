@@ -9,6 +9,7 @@ use App\Http\Controllers\Catalog\WarehouseController;
 use App\Http\Controllers\Companies\OnboardingController;
 use App\Http\Controllers\Companies\SwitchCompanyController;
 use App\Http\Controllers\Finance\InvoiceController;
+use App\Http\Controllers\Finance\SupplierBillController;
 use App\Http\Controllers\Inventory\StockController;
 use App\Http\Controllers\Inventory\StockMovementController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
@@ -121,6 +122,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
         Route::post('sales/orders/{sale}/invoice', [InvoiceController::class, 'store'])->name('sales.orders.invoice');
+        Route::post('purchasing/orders/{purchase_order}/bills', [SupplierBillController::class, 'store'])->name('purchasing.orders.bills.store');
 
         Route::prefix('finance')->name('finance.')->group(function () {
             Route::controller(InvoiceController::class)->prefix('invoices')->name('invoices.')->group(function () {
@@ -131,6 +133,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::post('{invoice}/cancel', 'cancel')->name('cancel');
                 Route::post('{invoice}/pdf', 'regeneratePdf')->middleware('throttle:10,1')->name('pdf.regenerate');
                 Route::get('{invoice}/pdf', 'downloadPdf')->name('pdf');
+            });
+
+            Route::controller(SupplierBillController::class)->prefix('bills')->name('bills.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('{bill}', 'show')->name('show');
+                Route::post('{bill}/cancel', 'cancel')->name('cancel');
             });
         });
 
