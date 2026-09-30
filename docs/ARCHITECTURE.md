@@ -202,9 +202,36 @@ Tablas de soporte: `document_sequences` (numeración sin huecos por empresa y ti
 
 Toda operación que toca más de una tabla de negocio corre en `DB::transaction()` dentro de su Action. Los efectos secundarios (emails, notificaciones, PDFs) se disparan con eventos **después del commit** (`ShouldDispatchAfterCommit` / `afterCommit()`), para no notificar algo que se revirtió.
 
-- **Compra:** `draft → pending → approved → partially_received → received` (o `cancelled`). La recepción genera movimientos `purchase` y actualiza cantidades recibidas por línea.
+- **Compra:** `draft → pending → approved → partially_received → received` (o `cancelled` antes de recibir; `pending → draft` para devolver a corrección). Detalle en §7.1.
 - **Venta:** `draft → pending → confirmed → partially_paid → paid` (o `cancelled`). La confirmación valida y descuenta stock; la cancelación de una venta confirmada genera movimientos `return` compensatorios (el ledger nunca se reescribe).
-- Las transiciones válidas viven en los Enums (`SaleStatus::canTransitionTo()`); una transición inválida lanza `InvalidStateTransition`.
+- Las transiciones válidas viven en los Enums (`PurchaseOrderStatus::allowedTransitions()`); una transición inválida lanza `InvalidStateTransition` (422). Cada transición relee el documento con `lockForUpdate`, así dos aprobadores simultáneos no pueden aprobar dos veces.
+
+### 7.1 Compras
+
+```mermaid
+stateDiagram-v2
+    [*] --> draft
+    draft --> pending: submit
+    pending --> draft: return to draft
+    pending --> approved: approve (purchases.approve)
+    approved --> partially_received: receive (parcial)
+    approved --> received: receive (total)
+    partially_received --> partially_received: receive
+    partially_received --> received: receive
+    draft --> cancelled
+    pending --> cancelled
+    approved --> cancelled
+    received --> [*]
+    cancelled --> [*]
+```
+
+- **Numeración sin huecos** (`DocumentNumberGenerator`): una fila por empresa y tipo en `document_sequences`, bloqueada con `FOR UPDATE` y generada *dentro* de la transacción del documento → sin duplicados bajo concurrencia y sin huecos si la transacción se revierte. Lanza excepción si se llama fuera de una transacción.
+- **Totales en servidor** (`LineCalculator`): impuesto calculado y redondeado por línea (half-up) y sumado; los totales enviados por el cliente se ignoran. Soporta descuentos para ventas.
+- **Snapshots:** cada línea guarda descripción, costo e impuesto; el documento guarda la moneda. Cambiar el producto después no altera documentos emitidos.
+- **Solo borradores se editan o eliminan**; después, un documento se cancela con motivo obligatorio (queda en el historial).
+- **Recepción** (`ReceivePurchaseOrder`), en una transacción: bloquea la orden, valida `cantidad ≤ pendiente` por línea, crea el albarán (`GR-…`), registra movimientos `purchase` con `unit_cost` y referencia al albarán, actualiza cantidades recibidas y el estado. Si una línea falla, no queda nada.
+- **Costo promedio ponderado móvil** (`WeightedAverageCost`): `(existencias × costo actual + recibido × costo recibido) / total`, recalculado en cada recepción (considera líneas repetidas del mismo producto en un albarán).
+- Facturas de proveedor y pagos (cuentas por pagar) se implementan con el módulo de facturación y pagos, compartido con ventas.
 
 ## 8. Auditoría
 
@@ -261,7 +288,7 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 4. ✅ Roles y permisos
 5. ✅ Productos, categorías, variantes, almacenes
 6. ✅ Inventario (ledger + proyección)
-7. Compras
+7. ✅ Compras (proveedores, órdenes, aprobación, recepciones)
 8. Ventas
 9. Facturación (PDF)
 10. Pagos

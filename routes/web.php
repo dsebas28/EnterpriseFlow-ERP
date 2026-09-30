@@ -3,12 +3,16 @@
 use App\Http\Controllers\Catalog\CategoryController;
 use App\Http\Controllers\Catalog\ProductController;
 use App\Http\Controllers\Catalog\ProductImageController;
+use App\Http\Controllers\Catalog\ProductLookupController;
 use App\Http\Controllers\Catalog\ProductVariantController;
 use App\Http\Controllers\Catalog\WarehouseController;
 use App\Http\Controllers\Companies\OnboardingController;
 use App\Http\Controllers\Companies\SwitchCompanyController;
 use App\Http\Controllers\Inventory\StockController;
 use App\Http\Controllers\Inventory\StockMovementController;
+use App\Http\Controllers\Purchasing\PurchaseOrderController;
+use App\Http\Controllers\Purchasing\PurchaseOrderWorkflowController;
+use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Team\AcceptInvitationController;
 use App\Http\Controllers\Team\InvitationController;
 use App\Http\Controllers\Team\MemberController;
@@ -39,6 +43,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         })->name('dashboard');
 
         Route::prefix('catalog')->name('catalog.')->group(function () {
+            Route::get('products/lookup', ProductLookupController::class)
+                ->middleware('throttle:120,1')
+                ->name('products.lookup');
             Route::resource('products', ProductController::class)->except('show');
 
             // Scoped bindings: a variant/image id is only resolved within its product.
@@ -70,6 +77,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('warehouses', [WarehouseController::class, 'store'])->name('warehouses.store');
             Route::put('warehouses/{warehouse}', [WarehouseController::class, 'update'])->name('warehouses.update');
             Route::delete('warehouses/{warehouse}', [WarehouseController::class, 'destroy'])->name('warehouses.destroy');
+        });
+
+        Route::prefix('purchasing')->name('purchasing.')->group(function () {
+            Route::get('suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
+            Route::post('suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
+            Route::put('suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
+            Route::delete('suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy');
+
+            Route::resource('orders', PurchaseOrderController::class)->parameters(['orders' => 'purchase_order']);
+            Route::controller(PurchaseOrderWorkflowController::class)->prefix('orders/{purchase_order}')->name('orders.')->group(function () {
+                Route::post('submit', 'submit')->name('submit');
+                Route::post('approve', 'approve')->name('approve');
+                Route::post('return-to-draft', 'returnToDraft')->name('return-to-draft');
+                Route::post('cancel', 'cancel')->name('cancel');
+                Route::post('receipts', 'receive')->name('receive');
+            });
         });
 
         Route::prefix('team')->name('team.')->group(function () {
