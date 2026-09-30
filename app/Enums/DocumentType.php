@@ -10,10 +10,12 @@ enum DocumentType: string
     case Invoice = 'invoice';
     case SupplierBill = 'supplier_bill';
     case Payment = 'payment';
+    case Expense = 'expense';
 
     public function prefix(): string
     {
         return match ($this) {
+            self::Expense => 'EXP',
             self::Payment => 'PAY',
             self::PurchaseOrder => 'PO',
             self::PurchaseReceipt => 'GR',
