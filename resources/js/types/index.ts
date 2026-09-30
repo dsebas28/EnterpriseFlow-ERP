@@ -1,3 +1,4 @@
+import type { MoneyValue } from '@/composables/useMoney';
 import type { PageProps } from '@inertiajs/core';
 import type { LucideIcon } from 'lucide-vue-next';
 
@@ -30,6 +31,51 @@ export interface NavItem {
     href: string;
     icon?: LucideIcon;
     isActive?: boolean;
+}
+
+export interface CategoryNode {
+    id: number;
+    parent_id: number | null;
+    name: string;
+    slug: string;
+    description: string | null;
+    depth: number;
+    products_count: number;
+}
+
+export interface Product {
+    id: string;
+    type: 'simple' | 'variable' | 'variant';
+    parent_id: string | null;
+    sku: string;
+    barcode: string | null;
+    name: string;
+    description: string | null;
+    status: 'active' | 'inactive';
+    category?: { id: number; name: string } | null;
+    cost: MoneyValue;
+    price: MoneyValue;
+    tax_rate: string;
+    min_stock: number;
+    attributes: Record<string, string> | null;
+    variants_count?: number;
+    variants?: Product[];
+    images?: { id: number; url: string }[];
+}
+
+export interface Warehouse {
+    id: string;
+    code: string;
+    name: string;
+    address: string | null;
+    city: string | null;
+    is_default: boolean;
+    is_active: boolean;
+}
+
+export interface Option {
+    value: string;
+    label: string;
 }
 
 export interface CompanySummary {
