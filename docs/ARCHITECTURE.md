@@ -331,11 +331,26 @@ Los workers no tienen sesión, así que un job debe saber para qué empresa trab
 
 ## 10. API
 
-- Versionada por prefijo `/api/v1`, controladores en `Http/Controllers/Api/V1`.
-- Envoltorio uniforme `{ success, data, message, meta? }` y errores `{ success: false, message, errors }` mediante un renderer central de excepciones para rutas `api/*`.
-- Paginación, filtros, búsqueda y ordenación por *allow-list* (nunca columnas arbitrarias del cliente).
-- Rate limiting por usuario/token y por IP en autenticación.
-- Especificación OpenAPI generada desde el código (se evaluará `dedoc/scramble` en la fase de API).
+- **Versionada por prefijo** `/api/v1` (`routes/api.php`), controladores delgados en `Http/Controllers/Api/V1`. Reutilizan exactamente las mismas Actions, Form Requests, Policies, Query Objects, Resources y definiciones de reportes que la web: una regla de negocio existe una sola vez.
+- **Autenticación:** `POST /auth/login` (email, password, `device_name`) devuelve un token personal de Sanctum **una sola vez** (en BD solo su hash), con expiración configurable (`SANCTUM_TOKEN_EXPIRATION`, 30 días por defecto). Credenciales inválidas y cuentas desactivadas producen el mismo error (sin enumeración de usuarios). `POST /auth/logout` revoca el token actual; `GET /me` devuelve el usuario y sus empresas. Un usuario desactivado pierde el acceso aunque conserve tokens.
+- **Empresa activa:** header `X-Company-Id`. Si falta, se usa la primera empresa activa del usuario; si apunta a una empresa ajena → `403` y evento en el canal `security`. Los registros de otra empresa responden `404` (el scope global los hace invisibles).
+- **Envoltorio uniforme** (`App\Support\Api\ApiResponse`): `{ success, data, message, meta? }`; `meta` = `{ current_page, per_page, total, last_page }` en listados paginados.
+- **Errores centralizados** (`ApiExceptionRenderer`, solo rutas `api/*`; `ForceJsonResponse` garantiza JSON): `{ success: false, message, errors }`.
+
+  | Situación | Código |
+  |---|---|
+  | Validación | 422 (`errors.campo[]`) |
+  | Regla de negocio (`BusinessRuleViolation`) | 422 (`errors.rule[]`) |
+  | Sin token / token inválido | 401 |
+  | Sin permiso, cuenta inactiva, empresa ajena | 403 |
+  | Recurso inexistente o de otra empresa | 404 |
+  | Rate limit | 429 (+ `Retry-After`) |
+  | Error inesperado | 500 (mensaje genérico salvo en debug; se registra) |
+
+- **Listados:** paginación, filtros, búsqueda y ordenación por *allow-list* validadas (`sort=-price`, `per_page` acotado); nunca columnas arbitrarias del cliente.
+- **Rate limiting:** `api` 60 req/min por usuario (o IP); `api-login` 5/min por email+IP y 20/min por IP.
+- **Endpoints v1:** `products` (CRUD), `customers` (index/store/show), `sales` (index/store/show, `confirm`, `cancel`; `"confirm": true` crea y confirma en una llamada), `purchases` (index/store/show), `inventory` (stock por producto/almacén), `reports` (catálogo), `reports/sales` y `reports/{key}`.
+- **OpenAPI 3.1** inferido del código con `dedoc/scramble` (Form Requests, Resources, docblocks): UI en `/docs/api` (restringida fuera de `local`) y especificación versionada en `docs/openapi.json` (`php artisan scramble:export`). `TenantRule` resuelve la empresa de forma perezosa —al validar, no al construir la regla— para que el generador lea las reglas sin tenant sin relajar el *fail-closed*.
 
 ## 11. Observabilidad
 
@@ -363,7 +378,7 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 | `larastan/larastan` | Análisis estático consciente de Eloquent. |
 | `barryvdh/laravel-dompdf` | Laravel no genera PDF; se usa solo dentro de un job en cola. |
 | `openspout/openspout` | XLSX en streaming con memoria constante (más ligero que maatwebsite/excel); CSV se hace nativo. |
-| *(fase API)* `dedoc/scramble` | OpenAPI inferido del código, sin anotaciones duplicadas. |
+| `dedoc/scramble` | OpenAPI inferido del código (Form Requests, Resources), sin anotaciones duplicadas que se desincronicen. |
 
 ## 14. Plan incremental
 
@@ -379,6 +394,6 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 10. ✅ Pagos (cobros y pagos, sin sobrepagos, anulación con historial)
 11. ✅ Gastos, reportes con exportación y dashboard con datos reales
 12. ✅ Auditoría
-13. API v1 + OpenAPI
+13. ✅ API v1 + OpenAPI
 14. Jobs/colas, notificaciones, scheduler, webhooks
 15. Docker, CI/CD, documentación final

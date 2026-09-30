@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use App\Support\Api\ApiResponse;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -18,11 +19,7 @@ class BusinessRuleViolation extends DomainException
     public function render(Request $request): JsonResponse|RedirectResponse
     {
         if ($request->expectsJson() && ! $request->header('X-Inertia')) {
-            return response()->json([
-                'success' => false,
-                'message' => $this->getMessage(),
-                'errors' => ['rule' => [$this->getMessage()]],
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return ApiResponse::error($this->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY, ['rule' => [$this->getMessage()]]);
         }
 
         return back()->withErrors(['rule' => $this->getMessage()]);

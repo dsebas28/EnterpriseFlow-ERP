@@ -5,6 +5,7 @@ namespace App\Http\Requests\Reports;
 use App\Reports\ReportFilters;
 use App\Support\Tenancy\TenantContext;
 use App\Support\Tenancy\TenantRule;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -34,7 +35,7 @@ class ReportFiltersRequest extends FormRequest
             'customer_id' => ['nullable', 'string', TenantRule::exists('customers')],
             'supplier_id' => ['nullable', 'string', TenantRule::exists('suppliers')],
             // Users are not tenant rows: restrict to members of the company.
-            'user_id' => ['nullable', 'integer', Rule::exists('company_user', 'user_id')->where('company_id', app(TenantContext::class)->idOrFail())],
+            'user_id' => ['nullable', 'integer', Rule::exists('company_user', 'user_id')->where(fn (Builder $q) => $q->where('company_id', app(TenantContext::class)->idOrFail()))],
             'format' => ['sometimes', Rule::in(['csv', 'xlsx', 'pdf'])],
         ];
     }

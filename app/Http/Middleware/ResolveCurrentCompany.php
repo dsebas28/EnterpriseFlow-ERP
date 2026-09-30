@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Company;
 use App\Models\User;
+use App\Support\Api\ApiResponse;
 use App\Support\Logging\SecurityLogger;
 use App\Support\Tenancy\TenantContext;
 use Closure;
@@ -89,9 +90,6 @@ class ResolveCurrentCompany
 
     private function deny(): Response
     {
-        return response()->json([
-            'success' => false,
-            'message' => 'You do not have access to the requested company.',
-        ], Response::HTTP_FORBIDDEN);
+        return ApiResponse::error('You do not have access to the requested company.', Response::HTTP_FORBIDDEN);
     }
 }

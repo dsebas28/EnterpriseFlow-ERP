@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Support\Api\ApiResponse;
 use App\Support\Logging\SecurityLogger;
 use Closure;
 use Illuminate\Http\Request;
@@ -36,9 +37,6 @@ class EnsureUserIsActive
             return redirect()->route('login')->with('status', 'Your account has been deactivated.');
         }
 
-        return response()->json([
-            'success' => false,
-            'message' => 'This account has been deactivated.',
-        ], Response::HTTP_FORBIDDEN);
+        return ApiResponse::error('This account has been deactivated.', Response::HTTP_FORBIDDEN);
     }
 }
