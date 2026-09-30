@@ -8,6 +8,7 @@ use App\Http\Controllers\Catalog\ProductVariantController;
 use App\Http\Controllers\Catalog\WarehouseController;
 use App\Http\Controllers\Companies\OnboardingController;
 use App\Http\Controllers\Companies\SwitchCompanyController;
+use App\Http\Controllers\Finance\InvoiceController;
 use App\Http\Controllers\Inventory\StockController;
 use App\Http\Controllers\Inventory\StockMovementController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
@@ -116,6 +117,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::post('return-to-draft', 'returnToDraft')->name('return-to-draft');
                 Route::post('confirm', 'confirm')->name('confirm');
                 Route::post('cancel', 'cancel')->name('cancel');
+            });
+        });
+
+        Route::post('sales/orders/{sale}/invoice', [InvoiceController::class, 'store'])->name('sales.orders.invoice');
+
+        Route::prefix('finance')->name('finance.')->group(function () {
+            Route::controller(InvoiceController::class)->prefix('invoices')->name('invoices.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('{invoice}', 'show')->name('show');
+                Route::put('{invoice}', 'update')->name('update');
+                Route::post('{invoice}/issue', 'issue')->name('issue');
+                Route::post('{invoice}/cancel', 'cancel')->name('cancel');
+                Route::post('{invoice}/pdf', 'regeneratePdf')->middleware('throttle:10,1')->name('pdf.regenerate');
+                Route::get('{invoice}/pdf', 'downloadPdf')->name('pdf');
             });
         });
 

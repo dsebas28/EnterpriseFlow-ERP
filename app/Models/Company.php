@@ -16,6 +16,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *
  * @property string $id
  * @property string $name
+ * @property string|null $legal_name
+ * @property string|null $tax_id
+ * @property string|null $email
+ * @property string|null $phone
+ * @property string|null $address
+ * @property string|null $city
  * @property string $country
  * @property string $currency
  * @property string $timezone

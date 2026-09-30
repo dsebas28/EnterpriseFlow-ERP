@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Sales;
 
 use App\Actions\Sales\DeleteSale;
 use App\Actions\Sales\SaveSale;
+use App\Enums\InvoiceStatus;
 use App\Enums\PartyStatus;
 use App\Enums\SaleStatus;
 use App\Http\Controllers\Controller;
@@ -11,6 +12,7 @@ use App\Http\Requests\Sales\SaveSaleRequest;
 use App\Http\Resources\SaleResource;
 use App\Http\Resources\WarehouseResource;
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Models\Sale;
 use App\Models\Warehouse;
 use App\Queries\SaleIndexQuery;
@@ -62,10 +64,19 @@ class SaleController extends Controller
 
         $sale->load(['customer', 'warehouse', 'items.product', 'creator', 'confirmer']);
         $user = $request->user();
+        $invoice = $sale->invoices()->where('status', '!=', InvoiceStatus::Cancelled->value)->first();
 
         return Inertia::render('sales/orders/Show', [
             'sale' => SaleResource::make($sale),
+            'invoice' => $invoice ? [
+                'id' => $invoice->id,
+                'number' => $invoice->number,
+                'status' => $invoice->status->value,
+                'status_label' => $invoice->status->label(),
+            ] : null,
+            'defaultDueDate' => now($this->tenant->companyOrFail()->timezone)->addDays(30)->toDateString(),
             'can' => [
+                'invoice' => $invoice === null && $sale->status->hasDeductedStock() && ($user?->can('create', Invoice::class) ?? false),
                 'edit' => $sale->status->isEditable() && ($user?->can('update', $sale) ?? false),
                 'markPending' => $sale->status->canTransitionTo(SaleStatus::Pending) && ($user?->can('update', $sale) ?? false),
                 'returnToDraft' => $sale->status === SaleStatus::Pending && ($user?->can('update', $sale) ?? false),
