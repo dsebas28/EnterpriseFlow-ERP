@@ -7,6 +7,8 @@ use App\Http\Controllers\Catalog\ProductVariantController;
 use App\Http\Controllers\Catalog\WarehouseController;
 use App\Http\Controllers\Companies\OnboardingController;
 use App\Http\Controllers\Companies\SwitchCompanyController;
+use App\Http\Controllers\Inventory\StockController;
+use App\Http\Controllers\Inventory\StockMovementController;
 use App\Http\Controllers\Team\AcceptInvitationController;
 use App\Http\Controllers\Team\InvitationController;
 use App\Http\Controllers\Team\MemberController;
@@ -58,6 +60,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
         Route::prefix('inventory')->name('inventory.')->group(function () {
+            Route::get('stock', [StockController::class, 'index'])->name('stock.index');
+            Route::get('movements', [StockMovementController::class, 'index'])->name('movements.index');
+            Route::post('adjustments', [StockMovementController::class, 'adjust'])->name('adjustments.store');
+            Route::post('manual-movements', [StockMovementController::class, 'manual'])->name('manual-movements.store');
+            Route::post('transfers', [StockMovementController::class, 'transfer'])->name('transfers.store');
+
             Route::get('warehouses', [WarehouseController::class, 'index'])->name('warehouses.index');
             Route::post('warehouses', [WarehouseController::class, 'store'])->name('warehouses.store');
             Route::put('warehouses/{warehouse}', [WarehouseController::class, 'update'])->name('warehouses.update');

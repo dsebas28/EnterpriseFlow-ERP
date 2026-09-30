@@ -188,11 +188,15 @@ Tablas de soporte: `document_sequences` (numeración sin huecos por empresa y ti
 
 ## 6. Inventario basado en movimientos
 
-- `stock_movements` es un **ledger append-only**: nunca se actualiza ni borra. Cada fila registra producto, almacén, cantidad con signo, tipo, costo unitario, usuario, referencia polimórfica (venta, compra, ajuste…), fecha y observaciones.
-- `stock_levels(product_id, warehouse_id, quantity)` es una **proyección** para lecturas rápidas, actualizada *en la misma transacción* que el movimiento.
-- Concurrencia: la fila de `stock_levels` se bloquea con `SELECT … FOR UPDATE` antes de validar disponibilidad → dos ventas simultáneas no pueden sobrevender.
-- `php artisan inventory:rebuild` reconstruye la proyección desde el ledger y reporta discrepancias (demuestra que el stock es derivable).
-- Una transferencia genera dos movimientos (salida + entrada) enlazados por un `transfer_id`.
+- `stock_movements` es un **ledger append-only**: cada fila registra producto, almacén, cantidad con signo, tipo, costo unitario, usuario, referencia polimórfica, fecha, observaciones y `balance_after` (saldo resultante, para el kardex sin recalcular). Se protege en **dos capas**: el modelo lanza excepción en `updating/deleting` y la base de datos tiene **triggers** (`BEFORE UPDATE OR DELETE`, PL/pgSQL en PostgreSQL y `RAISE(ABORT)` en SQLite) que rechazan incluso SQL crudo. Los errores se corrigen con movimientos compensatorios.
+- `stock_levels(product_id, warehouse_id, quantity)` es una **proyección** para lecturas rápidas, actualizada *en la misma transacción* que el movimiento por `InventoryService`, el único escritor de stock.
+- **Concurrencia:** la fila de la proyección se crea con `insertOrIgnore` (sin carrera al crearla) y se bloquea con `SELECT … FOR UPDATE` antes de validar disponibilidad → dos ventas simultáneas de la última unidad se serializan y la segunda falla con `InsufficientStock` (422). Los documentos con varias líneas bloquean filas en **orden determinista** (almacén, producto) para evitar deadlocks.
+- **Atomicidad:** `recordMany()` aplica todas las líneas o ninguna. Los eventos (`StockMovementRecorded`, `StockFellBelowMinimum`) implementan `ShouldDispatchAfterCommit`: nunca se notifica un movimiento revertido. `StockFellBelowMinimum` se dispara solo al *cruzar* el mínimo.
+- **Reglas:** cada tipo define su signo (compra solo entra, venta solo sale; ajuste, devolución y transferencia en ambos sentidos). Stock negativo prohibido salvo `companies.settings.allow_negative_stock`. Productos `variable` y almacenes inactivos no mueven stock. No se borra un producto ni un almacén con stock.
+- **Operaciones manuales:** ajuste por conteo físico (se registra la diferencia, leyendo el saldo bajo bloqueo), entrada/salida manual con motivo obligatorio, y transferencia = dos movimientos enlazados por `transfer_id` en una transacción.
+- **Referencias polimórficas** con `Relation::enforceMorphMap`: la BD guarda alias estables (`sale`, `purchase_order`) y nunca nombres de clase PHP.
+- `php artisan inventory:rebuild [--company=] [--fix]` recalcula la proyección desde el ledger, reporta discrepancias (log `app_json`) y devuelve código de salida ≠ 0 en *dry run* si las hay, apto para monitorización programada.
+- **Valoración:** a costo estándar (costo actual del producto). El costo promedio ponderado por movimiento queda en el roadmap.
 
 ## 7. Flujos transaccionales
 
@@ -256,7 +260,7 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 3. ✅ Autenticación (sesiones, invitaciones, desactivación)
 4. ✅ Roles y permisos
 5. ✅ Productos, categorías, variantes, almacenes
-6. Inventario (ledger + proyección)
+6. ✅ Inventario (ledger + proyección)
 7. Compras
 8. Ventas
 9. Facturación (PDF)

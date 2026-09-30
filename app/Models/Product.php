@@ -112,6 +112,14 @@ class Product extends Model
     }
 
     /**
+     * @return HasMany<StockLevel, $this>
+     */
+    public function stockLevels(): HasMany
+    {
+        return $this->hasMany(StockLevel::class);
+    }
+
+    /**
      * Top-level catalogue entries: simple and variable products (variants
      * are listed under their parent).
      *

@@ -3,6 +3,7 @@
 namespace App\Actions\Warehouses;
 
 use App\Exceptions\BusinessRuleViolation;
+use App\Models\StockLevel;
 use App\Models\Warehouse;
 
 final class DeleteWarehouse
@@ -13,7 +14,15 @@ final class DeleteWarehouse
             throw new BusinessRuleViolation('The default warehouse cannot be deleted. Choose another default first.');
         }
 
-        // Stock-related guards are added together with inventory movements.
+        $hasStock = StockLevel::query()
+            ->where('warehouse_id', $warehouse->id)
+            ->where('quantity', '!=', 0)
+            ->exists();
+
+        if ($hasStock) {
+            throw new BusinessRuleViolation('This warehouse still holds stock. Transfer or adjust it before deleting the warehouse.');
+        }
+
         $warehouse->delete();
     }
 }
