@@ -4,7 +4,21 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { usePermissions } from '@/composables/usePermissions';
 import { Link } from '@inertiajs/vue3';
-import { Boxes, ClipboardList, Contact, FolderTree, History, KeyRound, LayoutGrid, Package, Receipt, Truck, Users, Warehouse } from 'lucide-vue-next';
+import {
+    Boxes,
+    ClipboardList,
+    Contact,
+    FileText,
+    FolderTree,
+    History,
+    KeyRound,
+    LayoutGrid,
+    Package,
+    Receipt,
+    Truck,
+    Users,
+    Warehouse,
+} from 'lucide-vue-next';
 import { computed } from 'vue';
 import AppLogo from './AppLogo.vue';
 
@@ -38,6 +52,10 @@ const salesNavItems = computed(() =>
         { title: 'Sales', url: '/sales/orders', icon: Receipt, visible: can('sales.view') },
         { title: 'Customers', url: '/sales/customers', icon: Contact, visible: can('customers.view') },
     ].filter((item) => item.visible),
+);
+
+const financeNavItems = computed(() =>
+    [{ title: 'Invoices', url: '/finance/invoices', icon: FileText, visible: can('invoices.view') }].filter((item) => item.visible),
 );
 
 const purchasingNavItems = computed(() =>
@@ -75,6 +93,7 @@ const teamNavItems = computed(() =>
             <NavMain v-if="catalogNavItems.length" label="Catalog" :items="catalogNavItems" />
             <NavMain v-if="inventoryNavItems.length" label="Inventory" :items="inventoryNavItems" />
             <NavMain v-if="purchasingNavItems.length" label="Purchasing" :items="purchasingNavItems" />
+            <NavMain v-if="financeNavItems.length" label="Finance" :items="financeNavItems" />
             <NavMain v-if="teamNavItems.length" label="Team" :items="teamNavItems" />
         </SidebarContent>
 

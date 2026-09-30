@@ -2,7 +2,8 @@
 
 namespace App\Models;
 
-use App\Enums\SaleStatus;
+use App\Enums\InvoiceStatus;
+use App\Enums\PdfStatus;
 use App\Exceptions\InvalidStateTransition;
 use App\Support\Money\Money;
 use App\Support\Tenancy\BelongsToCompany;
@@ -13,13 +14,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
+ * A customer invoice (accounts receivable), issued from a confirmed sale.
+ *
  * @property string $id
  * @property string $company_id
- * @property string $number
+ * @property string|null $number
+ * @property string $sale_id
  * @property string $customer_id
- * @property string $warehouse_id
- * @property SaleStatus $status
- * @property Carbon $sale_date
+ * @property InvoiceStatus $status
+ * @property Carbon|null $issue_date
+ * @property Carbon $due_date
  * @property string $currency
  * @property int $discount_total
  * @property int $subtotal
@@ -27,20 +31,25 @@ use Illuminate\Support\Carbon;
  * @property int $total
  * @property int $amount_paid
  * @property string|null $notes
+ * @property PdfStatus|null $pdf_status
+ * @property string|null $pdf_path
+ * @property Carbon|null $pdf_generated_at
  * @property int|null $created_by
- * @property int|null $confirmed_by
- * @property Carbon|null $confirmed_at
+ * @property int|null $issued_by
+ * @property Carbon|null $issued_at
  * @property int|null $cancelled_by
  * @property Carbon|null $cancelled_at
  * @property string|null $cancel_reason
  * @property Carbon|null $created_at
  */
-class Sale extends Model
+class Invoice extends Model
 {
     use BelongsToCompany, HasUlids;
 
+    public const PDF_DISK = 'local';
+
     /**
-     * Written exclusively by the sales actions.
+     * Written exclusively by the invoicing actions.
      *
      * @var list<string>
      */
@@ -49,22 +58,25 @@ class Sale extends Model
     protected function casts(): array
     {
         return [
-            'status' => SaleStatus::class,
-            'sale_date' => 'date',
+            'status' => InvoiceStatus::class,
+            'pdf_status' => PdfStatus::class,
+            'issue_date' => 'date',
+            'due_date' => 'date',
             'discount_total' => 'integer',
             'subtotal' => 'integer',
             'tax_total' => 'integer',
             'total' => 'integer',
             'amount_paid' => 'integer',
-            'confirmed_at' => 'datetime',
+            'pdf_generated_at' => 'datetime',
+            'issued_at' => 'datetime',
             'cancelled_at' => 'datetime',
         ];
     }
 
-    public function transitionTo(SaleStatus $status): void
+    public function transitionTo(InvoiceStatus $status): void
     {
         if (! $this->status->canTransitionTo($status)) {
-            throw InvalidStateTransition::between('sale', $this->status, $status);
+            throw InvalidStateTransition::between('invoice', $this->status, $status);
         }
 
         $this->status = $status;
@@ -72,12 +84,20 @@ class Sale extends Model
 
     public function balanceDue(): int
     {
-        return $this->status->hasDeductedStock() ? max(0, $this->total - $this->amount_paid) : 0;
+        return $this->status->isOpen() ? max(0, $this->total - $this->amount_paid) : 0;
     }
 
     public function money(int $minor): Money
     {
         return new Money($minor, $this->currency);
+    }
+
+    /**
+     * @return BelongsTo<Sale, $this>
+     */
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(Sale::class);
     }
 
     /**
@@ -89,42 +109,18 @@ class Sale extends Model
     }
 
     /**
-     * @return BelongsTo<Warehouse, $this>
-     */
-    public function warehouse(): BelongsTo
-    {
-        return $this->belongsTo(Warehouse::class)->withTrashed();
-    }
-
-    /**
-     * @return HasMany<SaleItem, $this>
+     * @return HasMany<InvoiceItem, $this>
      */
     public function items(): HasMany
     {
-        return $this->hasMany(SaleItem::class)->orderBy('position');
-    }
-
-    /**
-     * @return HasMany<Invoice, $this>
-     */
-    public function invoices(): HasMany
-    {
-        return $this->hasMany(Invoice::class)->latest();
+        return $this->hasMany(InvoiceItem::class)->orderBy('position');
     }
 
     /**
      * @return BelongsTo<User, $this>
      */
-    public function creator(): BelongsTo
+    public function issuer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
-    }
-
-    /**
-     * @return BelongsTo<User, $this>
-     */
-    public function confirmer(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'confirmed_by');
+        return $this->belongsTo(User::class, 'issued_by');
     }
 }

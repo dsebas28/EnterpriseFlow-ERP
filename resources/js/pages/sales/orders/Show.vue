@@ -11,7 +11,7 @@ import { formatMoney, type MoneyValue } from '@/composables/useMoney';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, Ban, CheckCircle2, Clock, Pencil, Trash2, Undo2 } from 'lucide-vue-next';
+import { ArrowLeft, Ban, CheckCircle2, Clock, FileText, Pencil, Trash2, Undo2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 interface Item {
@@ -52,10 +52,16 @@ interface Sale {
 
 const props = defineProps<{
     sale: { data: Sale };
-    can: { edit: boolean; markPending: boolean; returnToDraft: boolean; confirm: boolean; cancel: boolean; delete: boolean };
+    invoice: { id: string; number: string | null; status: string; status_label: string } | null;
+    defaultDueDate: string;
+    can: { invoice: boolean; edit: boolean; markPending: boolean; returnToDraft: boolean; confirm: boolean; cancel: boolean; delete: boolean };
 }>();
 
 const sale = computed(() => props.sale.data);
+
+const invoiceOpen = ref(false);
+const invoiceForm = useForm({ due_date: props.defaultDueDate, notes: '' });
+const createInvoice = () => invoiceForm.post(route('sales.orders.invoice', sale.value.id), { onSuccess: () => (invoiceOpen.value = false) });
 
 const breadcrumbs = computed<BreadcrumbItem[]>(() => [
     { title: 'Sales', href: '/sales/orders' },
@@ -137,6 +143,26 @@ const formatDateTime = (value: string) => new Date(value).toLocaleString(undefin
             </div>
 
             <PageAlerts />
+
+            <div
+                v-if="invoice || can.invoice"
+                class="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3 text-sm"
+            >
+                <template v-if="invoice">
+                    <span class="flex items-center gap-2">
+                        <FileText class="h-4 w-4 text-muted-foreground" />
+                        Invoice
+                        <Link :href="route('finance.invoices.show', invoice.id)" class="font-mono font-medium hover:underline">
+                            {{ invoice.number ?? 'draft' }}
+                        </Link>
+                        <StatusBadge :status="invoice.status" :label="invoice.status_label" />
+                    </span>
+                </template>
+                <template v-else>
+                    <span class="text-muted-foreground">This sale has not been invoiced yet.</span>
+                    <Button size="sm" @click="invoiceOpen = true"><FileText class="mr-2 h-4 w-4" /> Create invoice</Button>
+                </template>
+            </div>
 
             <p
                 v-if="sale.status === 'cancelled'"
@@ -230,6 +256,30 @@ const formatDateTime = (value: string) => new Date(value).toLocaleString(undefin
                 </aside>
             </div>
         </div>
+
+        <Dialog v-model:open="invoiceOpen">
+            <DialogContent>
+                <form class="space-y-5" @submit.prevent="createInvoice">
+                    <DialogHeader>
+                        <DialogTitle>Create invoice for {{ sale.number }}</DialogTitle>
+                        <DialogDescription>A draft is created with the sale's lines. It gets its legal number when you issue it.</DialogDescription>
+                    </DialogHeader>
+                    <div class="grid gap-2">
+                        <Label for="due_date">Due date</Label>
+                        <Input id="due_date" v-model="invoiceForm.due_date" type="date" required />
+                        <InputError :message="invoiceForm.errors.due_date" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="invoice_notes">Notes</Label>
+                        <Input id="invoice_notes" v-model="invoiceForm.notes" placeholder="Payment instructions" />
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="secondary" @click="invoiceOpen = false">Cancel</Button>
+                        <Button type="submit" :disabled="invoiceForm.processing">Create draft invoice</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
 
         <Dialog v-model:open="confirmOpen">
             <DialogContent>
