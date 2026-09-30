@@ -52,8 +52,13 @@ services:
       php artisan queue:work redis
       --queue=webhooks,notifications,documents,reports,default
       --tries=3 --max-time=3600 --sleep=1
+    # The image healthcheck probes PHP-FPM, which does not run here.
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "pgrep -f 'artisan queue:work' > /dev/null"]
+      interval: 15s
+      timeout: 3s
+      start_period: 30s
+      retries: 3
     # Let the current job finish on shutdown (queue:work handles SIGTERM).
     stop_grace_period: 60s
     depends_on:
@@ -64,7 +69,11 @@ services:
     <<: *app
     command: php artisan schedule:work
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "pgrep -f 'artisan schedule:work' > /dev/null"]
+      interval: 15s
+      timeout: 3s
+      start_period: 30s
+      retries: 3
     depends_on:
       app:
         condition: service_healthy
