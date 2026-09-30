@@ -217,4 +217,15 @@ it('queues the invitation email without needing a tenant context', function () {
 
     expect($mail->actionUrl)->toBe(route('invitations.show', 'plain-token'))
         ->and($mail->subject)->toContain($company->name);
+
+    // Existing users also get it in their bell, as a personal notification.
+    $invitee = User::factory()->create();
+    expect($restored->via($invitee))->toBe(['mail', 'database'])
+        ->and($restored->via(new AnonymousNotifiable))->toBe(['mail'])
+        ->and($restored->databaseType($invitee))->toBe('invitation')
+        ->and($restored->toArray($invitee))->toMatchArray([
+            'category' => 'invitation',
+            'title' => "You're invited to join {$company->name}",
+            'url' => route('invitations.show', 'plain-token'),
+        ]);
 });

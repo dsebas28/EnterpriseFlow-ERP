@@ -178,6 +178,22 @@ it('restores the tenant inside the worker from the captured company id', functio
         ->and(tenant()->run($this->company, fn () => $invoice->fresh()->pdf_status))->toBe(PdfStatus::Ready);
 });
 
+it('marks the PDF as failed once the job gives up, and skips jobs of deleted companies', function () {
+    Queue::fake();
+    $invoice = tenant()->run($this->company, fn () => app(IssueInvoice::class)->handle(draftInvoiceFor($this), $this->accountant));
+    $job = unserialize(serialize(Queue::pushed(GenerateInvoicePdf::class)->first()));
+    tenant()->set(null);
+
+    // The worker calls failed() without middleware, i.e. without a tenant.
+    $job->failed(new RuntimeException('dompdf ran out of memory'));
+
+    expect(tenant()->run($this->company, fn () => $invoice->fresh()->pdf_status))->toBe(PdfStatus::Failed);
+
+    // A job whose company no longer exists is dropped by the middleware.
+    $orphan = new App\Jobs\Middleware\RestoreTenantContext('01JZZZZZZZZZZZZZZZZZZZZZZZ');
+    expect($orphan->handle($job, fn () => throw new LogicException('must not run')))->toBeNull();
+});
+
 it('downloads the PDF only for authorised members of the company', function () {
     $invoice = tenant()->run($this->company, fn () => app(IssueInvoice::class)->handle(draftInvoiceFor($this), $this->accountant));
     [$outsider] = memberWithRole(SystemRole::Owner);

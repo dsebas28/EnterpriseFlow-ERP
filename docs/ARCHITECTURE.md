@@ -427,6 +427,24 @@ sequenceDiagram
 
 El código evita SQL específico de un motor salvo donde se justifica (p. ej. `lockForUpdate`, que en SQLite es un no-op seguro porque SQLite serializa escrituras).
 
+### 12.1 Estrategia de tests
+
+**527 tests (Pest 4), ~2 800 aserciones, cobertura de líneas 96,7 %** (`app/`, medida con pcov). Lo que no cubre SQLite (ramas PostgreSQL/MySQL de `DateBucket`) lo ejercita CI contra PostgreSQL.
+
+| Capa | Qué garantiza | Dónde |
+|---|---|---|
+| Unit | Dinero (redondeo half-up, ISO 4217), cálculo de líneas, plantillas de roles, datos de empresa, firmas HMAC, parsing de user agents | `tests/Unit` |
+| Arquitectura | Sin `dd`/`dump`/funciones inseguras; `env()` solo en `config/`; controladores sin SQL directo; dominio (Actions, Services, Reports, DTOs) sin dependencias HTTP; Actions `final`; DTOs `readonly`; eventos *after commit*; jobs y notificaciones en cola; convenciones de Requests/Resources/Policies | `tests/Unit/ArchitectureTest.php` |
+| Feature por módulo | Reglas de negocio de punta a punta vía HTTP y Actions (stock, estados, pagos, reportes con cifras exactas…) | `tests/Feature/<Módulo>` |
+| **Barridos de seguridad** | Recorren las rutas *registradas*, así que una ruta nueva queda cubierta sin escribir tests: (1) toda ruta exige autenticación salvo una lista pública revisada, y rechaza a invitados (redirect/401); (2) un miembro sin roles recibe `403` en toda ruta con permisos; (3) los registros de otra empresa responden `404` en **toda** ruta con model binding | `tests/Feature/Security/RouteProtectionTest.php` |
+| Cobertura de tenancy | Todo modelo cuya tabla tiene `company_id` lleva el `CompanyScope` fail-closed (o está en una lista de excepciones justificadas, que el propio test mantiene honesta); todos fallan sin empresa activa | `tests/Feature/Tenancy/TenantModelCoverageTest.php` |
+| Render de páginas | Cada página Inertia renderiza para un Owner con datos reales y su componente Vue existe; cada reporte se ejecuta con datos | `tests/Feature/PageRenderTest.php` |
+
+- **Escenario compartido** `Tests\Support\BusinessScenario`: una empresa con un registro de cada tipo en estados realistas, construido con las Actions reales (nunca inserts crudos).
+- **Los barridos se validaron con sabotaje:** quitar un `Gate::authorize` o saltarse el scope en un route binding hace fallar el test correspondiente, con la ruta exacta en el mensaje.
+- **Determinismo:** reloj congelado (`travelTo`/`freezeTime`) donde intervienen fechas, colas `sync` o `Queue::fake` selectivo, sin dependencias de red.
+- **Comandos:** `composer test` (paralelo), `composer test:arch`, `composer test:coverage` (requiere pcov/xdebug; umbral 90 %), `composer ci` (Pint + PHPStan + tests).
+
 ## 13. Dependencias externas
 
 Se añade una librería solo cuando Laravel no cubre la necesidad:

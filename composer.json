@@ -67,7 +67,14 @@
         ],
         "test": [
             "@php artisan config:clear --ansi",
-            "@php vendor/bin/pest"
+            "@php vendor/bin/pest --parallel"
+        ],
+        "test:arch": [
+            "@php vendor/bin/pest tests/Unit/ArchitectureTest.php"
+        ],
+        "test:coverage": [
+            "@php artisan config:clear --ansi",
+            "@php vendor/bin/pest --coverage --min=90"
         ],
         "lint": [
             "@php vendor/bin/pint --test"
