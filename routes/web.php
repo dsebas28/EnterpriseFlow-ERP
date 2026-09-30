@@ -13,6 +13,10 @@ use App\Http\Controllers\Inventory\StockMovementController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\PurchaseOrderWorkflowController;
 use App\Http\Controllers\Purchasing\SupplierController;
+use App\Http\Controllers\Sales\CustomerController;
+use App\Http\Controllers\Sales\CustomerNoteController;
+use App\Http\Controllers\Sales\SaleController;
+use App\Http\Controllers\Sales\SaleWorkflowController;
 use App\Http\Controllers\Team\AcceptInvitationController;
 use App\Http\Controllers\Team\InvitationController;
 use App\Http\Controllers\Team\MemberController;
@@ -92,6 +96,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::post('return-to-draft', 'returnToDraft')->name('return-to-draft');
                 Route::post('cancel', 'cancel')->name('cancel');
                 Route::post('receipts', 'receive')->name('receive');
+            });
+        });
+
+        Route::prefix('sales')->name('sales.')->group(function () {
+            Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
+            Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
+            Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
+            Route::put('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+            Route::delete('customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
+            Route::post('customers/{customer}/notes', [CustomerNoteController::class, 'store'])->name('customers.notes.store');
+            Route::delete('customers/{customer}/notes/{note}', [CustomerNoteController::class, 'destroy'])
+                ->scopeBindings()
+                ->name('customers.notes.destroy');
+
+            Route::resource('orders', SaleController::class)->parameters(['orders' => 'sale']);
+            Route::controller(SaleWorkflowController::class)->prefix('orders/{sale}')->name('orders.')->group(function () {
+                Route::post('pending', 'markPending')->name('pending');
+                Route::post('return-to-draft', 'returnToDraft')->name('return-to-draft');
+                Route::post('confirm', 'confirm')->name('confirm');
+                Route::post('cancel', 'cancel')->name('cancel');
             });
         });
 

@@ -203,7 +203,7 @@ Tablas de soporte: `document_sequences` (numeración sin huecos por empresa y ti
 Toda operación que toca más de una tabla de negocio corre en `DB::transaction()` dentro de su Action. Los efectos secundarios (emails, notificaciones, PDFs) se disparan con eventos **después del commit** (`ShouldDispatchAfterCommit` / `afterCommit()`), para no notificar algo que se revirtió.
 
 - **Compra:** `draft → pending → approved → partially_received → received` (o `cancelled` antes de recibir; `pending → draft` para devolver a corrección). Detalle en §7.1.
-- **Venta:** `draft → pending → confirmed → partially_paid → paid` (o `cancelled`). La confirmación valida y descuenta stock; la cancelación de una venta confirmada genera movimientos `return` compensatorios (el ledger nunca se reescribe).
+- **Venta:** `draft → pending → confirmed → partially_paid → paid` (o `cancelled`). Detalle en §7.2.
 - Las transiciones válidas viven en los Enums (`PurchaseOrderStatus::allowedTransitions()`); una transición inválida lanza `InvalidStateTransition` (422). Cada transición relee el documento con `lockForUpdate`, así dos aprobadores simultáneos no pueden aprobar dos veces.
 
 ### 7.1 Compras
@@ -232,6 +232,31 @@ stateDiagram-v2
 - **Recepción** (`ReceivePurchaseOrder`), en una transacción: bloquea la orden, valida `cantidad ≤ pendiente` por línea, crea el albarán (`GR-…`), registra movimientos `purchase` con `unit_cost` y referencia al albarán, actualiza cantidades recibidas y el estado. Si una línea falla, no queda nada.
 - **Costo promedio ponderado móvil** (`WeightedAverageCost`): `(existencias × costo actual + recibido × costo recibido) / total`, recalculado en cada recepción (considera líneas repetidas del mismo producto en un albarán).
 - Facturas de proveedor y pagos (cuentas por pagar) se implementan con el módulo de facturación y pagos, compartido con ventas.
+
+### 7.2 Ventas
+
+```mermaid
+stateDiagram-v2
+    [*] --> draft
+    draft --> pending: poner en espera (cotización)
+    pending --> draft
+    draft --> confirmed: confirmar (sales.confirm) → salida de stock
+    pending --> confirmed
+    confirmed --> partially_paid: pago parcial
+    confirmed --> paid: pago total
+    partially_paid --> paid
+    draft --> cancelled
+    pending --> cancelled
+    confirmed --> cancelled: sin pagos → movimientos return
+    paid --> [*]
+    cancelled --> [*]
+```
+
+- **Confirmar** (`ConfirmSale`), en una transacción: bloquea la venta (no hay doble confirmación), descuenta todas las líneas con `InventoryService::recordMany()` (filas de stock bloqueadas en orden determinista), guarda `unit_cost` por línea (costo real del momento, para reportes de utilidad) y emite `SaleConfirmed` tras el commit. Si una línea no tiene stock, la venta queda en su estado anterior y no existe ningún movimiento.
+- **Cancelar** (`CancelSale`): motivo obligatorio. Si el stock ya había salido, vuelve con movimientos `return` que referencian la venta y conservan el costo: el kardex muestra la venta *y* su reverso. Una venta con pagos no se cancela (requiere reembolso).
+- **Descuentos por línea** en *basis points* antes de impuestos; precio sugerido desde el producto y editable (snapshot).
+- **Saldo del cliente** = Σ (`total − amount_paid`) de ventas `confirmed`/`partially_paid`, calculado en SQL (`withSum`) para el listado. `amount_paid` lo mantiene el módulo de pagos.
+- **Ficha de cliente:** historial de ventas, total vendido, saldo pendiente, última compra y notas internas (borrables por su autor o por quien puede editar el cliente).
 
 ## 8. Auditoría
 
@@ -289,7 +314,7 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 5. ✅ Productos, categorías, variantes, almacenes
 6. ✅ Inventario (ledger + proyección)
 7. ✅ Compras (proveedores, órdenes, aprobación, recepciones)
-8. Ventas
+8. ✅ Ventas (clientes, notas, confirmación con stock, cancelación compensatoria)
 9. Facturación (PDF)
 10. Pagos
 11. Gastos y reportes

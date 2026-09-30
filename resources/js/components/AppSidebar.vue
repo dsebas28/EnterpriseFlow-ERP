@@ -4,7 +4,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { usePermissions } from '@/composables/usePermissions';
 import { Link } from '@inertiajs/vue3';
-import { Boxes, ClipboardList, FolderTree, History, KeyRound, LayoutGrid, Package, Truck, Users, Warehouse } from 'lucide-vue-next';
+import { Boxes, ClipboardList, Contact, FolderTree, History, KeyRound, LayoutGrid, Package, Receipt, Truck, Users, Warehouse } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AppLogo from './AppLogo.vue';
 
@@ -30,6 +30,13 @@ const inventoryNavItems = computed(() =>
         { title: 'Stock', url: '/inventory/stock', icon: Boxes, visible: can('inventory.view') },
         { title: 'Movements', url: '/inventory/movements', icon: History, visible: can('inventory.view') },
         { title: 'Warehouses', url: '/inventory/warehouses', icon: Warehouse, visible: canAny('warehouses.view', 'warehouses.manage') },
+    ].filter((item) => item.visible),
+);
+
+const salesNavItems = computed(() =>
+    [
+        { title: 'Sales', url: '/sales/orders', icon: Receipt, visible: can('sales.view') },
+        { title: 'Customers', url: '/sales/customers', icon: Contact, visible: can('customers.view') },
     ].filter((item) => item.visible),
 );
 
@@ -64,6 +71,7 @@ const teamNavItems = computed(() =>
 
         <SidebarContent>
             <NavMain label="Platform" :items="mainNavItems" />
+            <NavMain v-if="salesNavItems.length" label="Sales" :items="salesNavItems" />
             <NavMain v-if="catalogNavItems.length" label="Catalog" :items="catalogNavItems" />
             <NavMain v-if="inventoryNavItems.length" label="Inventory" :items="inventoryNavItems" />
             <NavMain v-if="purchasingNavItems.length" label="Purchasing" :items="purchasingNavItems" />
