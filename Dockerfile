@@ -85,7 +85,7 @@ CMD ["php-fpm"]
 ############################################################
 # 4. Web server: Nginx
 ############################################################
-FROM nginx:1.27-alpine AS web
+FROM nginx:1.31-alpine AS web
 
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY docker/nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
