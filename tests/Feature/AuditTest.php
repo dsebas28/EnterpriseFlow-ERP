@@ -115,11 +115,15 @@ it('leaves no audit entry when the operation is rolled back', function () {
 it('is append-only in the model and in the database', function () {
     tenant()->run($this->company, fn () => Product::factory()->create());
     $entry = auditEntries($this)->last();
+    $original = $entry->event;
 
     expect(fn () => $entry->forceFill(['event' => 'tampered'])->save())->toThrow(LogicException::class)
         ->and(fn () => $entry->delete())->toThrow(LogicException::class)
-        ->and(fn () => DB::table('audit_logs')->where('id', $entry->id)->update(['event' => 'tampered']))->toThrow(QueryException::class, 'append-only')
-        ->and(fn () => DB::table('audit_logs')->where('id', $entry->id)->delete())->toThrow(QueryException::class, 'append-only');
+        // Savepoint per statement: PostgreSQL aborts the enclosing transaction on error.
+        ->and(fn () => DB::transaction(fn () => DB::table('audit_logs')->where('id', $entry->id)->update(['event' => 'tampered'])))->toThrow(QueryException::class, 'append-only')
+        ->and(fn () => DB::transaction(fn () => DB::table('audit_logs')->where('id', $entry->id)->delete()))->toThrow(QueryException::class, 'append-only');
+
+    expect(DB::table('audit_logs')->where('id', $entry->id)->value('event'))->toBe($original);
 });
 
 it('records system actions without a user', function () {

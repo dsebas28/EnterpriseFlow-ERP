@@ -33,8 +33,9 @@ class MemberController extends Controller
             ->with(['user', 'roles'])
             ->join('users', 'users.id', '=', 'company_user.user_id')
             ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q
-                ->where('users.name', 'like', "%{$search}%")
-                ->orWhere('users.email', 'like', "%{$search}%")))
+                // whereLike is case-insensitive on every engine (ILIKE on PostgreSQL).
+                ->whereLike('users.name', "%{$search}%")
+                ->orWhereLike('users.email', "%{$search}%")))
             ->orderBy('users.name')
             ->select('company_user.*')
             ->paginate(20)

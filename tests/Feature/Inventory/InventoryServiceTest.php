@@ -136,10 +136,14 @@ describe('append-only ledger', function () {
     it('refuses updates and deletes at the database level', function () {
         $movement = move($this->product, $this->warehouse, 3, Type::Purchase);
 
-        expect(fn () => DB::table('stock_movements')->where('id', $movement->id)->update(['quantity' => 300]))
+        // Each statement in its own savepoint: on PostgreSQL a rejected
+        // statement aborts the enclosing (test) transaction.
+        expect(fn () => DB::transaction(fn () => DB::table('stock_movements')->where('id', $movement->id)->update(['quantity' => 300])))
             ->toThrow(QueryException::class, 'append-only')
-            ->and(fn () => DB::table('stock_movements')->where('id', $movement->id)->delete())
+            ->and(fn () => DB::transaction(fn () => DB::table('stock_movements')->where('id', $movement->id)->delete()))
             ->toThrow(QueryException::class, 'append-only');
+
+        expect(DB::table('stock_movements')->where('id', $movement->id)->value('quantity'))->toBe(3);
     });
 });
 
