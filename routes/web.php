@@ -17,6 +17,7 @@ use App\Http\Controllers\Inventory\StockMovementController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\PurchaseOrderWorkflowController;
 use App\Http\Controllers\Purchasing\SupplierController;
+use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\Sales\CustomerController;
 use App\Http\Controllers\Sales\CustomerNoteController;
 use App\Http\Controllers\Sales\SaleController;
@@ -159,6 +160,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('{bill}', 'show')->name('show');
                 Route::post('{bill}/cancel', 'cancel')->name('cancel');
             });
+        });
+
+        Route::controller(ReportController::class)->prefix('reports')->name('reports.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('exports/{export}', 'download')->name('exports.download');
+            Route::get('{key}', 'show')->where('key', '[a-z-]+')->name('show');
+            Route::post('{key}/exports', 'export')->where('key', '[a-z-]+')->middleware('throttle:20,1')->name('export');
         });
 
         Route::prefix('team')->name('team.')->group(function () {

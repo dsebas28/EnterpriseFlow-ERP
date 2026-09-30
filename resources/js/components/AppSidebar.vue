@@ -6,6 +6,7 @@ import { usePermissions } from '@/composables/usePermissions';
 import { Link } from '@inertiajs/vue3';
 import {
     Banknote,
+    BarChart3,
     Boxes,
     ClipboardList,
     Contact,
@@ -27,13 +28,12 @@ import AppLogo from './AppLogo.vue';
 
 const { can, canAny } = usePermissions();
 
-const mainNavItems = [
-    {
-        title: 'Dashboard',
-        url: '/dashboard',
-        icon: LayoutGrid,
-    },
-];
+const mainNavItems = computed(() =>
+    [
+        { title: 'Dashboard', url: '/dashboard', icon: LayoutGrid, visible: true },
+        { title: 'Reports', url: '/reports', icon: BarChart3, visible: can('reports.view') },
+    ].filter((item) => item.visible),
+);
 
 const catalogNavItems = computed(() =>
     [
