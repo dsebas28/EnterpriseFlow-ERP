@@ -2,14 +2,11 @@
 
 namespace App\Http\Controllers\Webhooks;
 
-use App\Enums\WebhookEventStatus;
+use App\Actions\Webhooks\ReceiveWebhookEvent;
 use App\Http\Controllers\Controller;
-use App\Jobs\ProcessWebhookEvent;
-use App\Models\WebhookEvent;
 use App\Support\Api\ApiResponse;
 use App\Support\Logging\SecurityLogger;
 use App\Support\Webhooks\WebhookSignature;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -18,8 +15,7 @@ use Illuminate\Support\Facades\Validator;
  * Inbound webhook receiver: verify, persist, acknowledge, process later.
  *
  * The response is sent as soon as the event is stored, so slow processing
- * never makes the provider time out and redeliver. Duplicates are detected
- * by the unique (provider, external_id) index.
+ * never makes the provider time out and redeliver.
  */
 class WebhookController extends Controller
 {
@@ -30,7 +26,7 @@ class WebhookController extends Controller
      *
      * @unauthenticated
      */
-    public function __invoke(Request $request, string $provider): JsonResponse
+    public function __invoke(Request $request, string $provider, ReceiveWebhookEvent $receive): JsonResponse
     {
         $secret = config("webhooks.providers.{$provider}.secret");
 
@@ -57,41 +53,13 @@ class WebhookController extends Controller
             return ApiResponse::error('Invalid payload.', 422, $validator->errors()->toArray());
         }
 
-        /** @var array<string, mixed> $body */
-        try {
-            $event = new WebhookEvent;
-            $event->forceFill([
-                'provider' => $provider,
-                'external_id' => $body['id'],
-                'type' => $body['type'],
-                'payload' => $body,
-                'status' => WebhookEventStatus::Pending,
-                'received_at' => now(),
-            ])->save();
-        } catch (UniqueConstraintViolationException) {
-            return $this->duplicate($provider, (string) $body['id']);
-        }
+        /** @var array{id: string, type: string}&array<string, mixed> $body */
+        ['event' => $event, 'outcome' => $outcome] = $receive->handle($provider, $body);
 
-        ProcessWebhookEvent::dispatch($event->id);
-
-        return ApiResponse::success(['id' => $event->id, 'duplicate' => false], 'Event accepted.', 202);
-    }
-
-    /**
-     * A redelivery. Acknowledged without side effects, except that an event
-     * that previously failed gets another chance.
-     */
-    private function duplicate(string $provider, string $externalId): JsonResponse
-    {
-        $event = WebhookEvent::where('provider', $provider)->where('external_id', $externalId)->firstOrFail();
-
-        if ($event->status === WebhookEventStatus::Failed) {
-            $event->forceFill(['status' => WebhookEventStatus::Pending])->save();
-            ProcessWebhookEvent::dispatch($event->id);
-
-            return ApiResponse::success(['id' => $event->id, 'duplicate' => true], 'Event re-queued.', 202);
-        }
-
-        return ApiResponse::success(['id' => $event->id, 'duplicate' => true], 'Event already received.');
+        return match ($outcome) {
+            ReceiveWebhookEvent::ACCEPTED => ApiResponse::success(['id' => $event->id, 'duplicate' => false], 'Event accepted.', 202),
+            ReceiveWebhookEvent::REQUEUED => ApiResponse::success(['id' => $event->id, 'duplicate' => true], 'Event re-queued.', 202),
+            ReceiveWebhookEvent::DUPLICATE => ApiResponse::success(['id' => $event->id, 'duplicate' => true], 'Event already received.'),
+        };
     }
 }

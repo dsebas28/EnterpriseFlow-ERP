@@ -74,12 +74,15 @@ return new class extends Migration
     {
         match (DB::getDriverName()) {
             'pgsql' => DB::unprepared(<<<'SQL'
-                CREATE FUNCTION stock_movements_append_only() RETURNS trigger AS $$
+                -- Functions outlive `migrate:fresh` (it only drops tables), so
+                -- both statements must be re-runnable.
+                CREATE OR REPLACE FUNCTION stock_movements_append_only() RETURNS trigger AS $$
                 BEGIN
                     RAISE EXCEPTION 'stock_movements is append-only: record a compensating movement instead';
                 END;
                 $$ LANGUAGE plpgsql;
 
+                DROP TRIGGER IF EXISTS stock_movements_append_only ON stock_movements;
                 CREATE TRIGGER stock_movements_append_only
                     BEFORE UPDATE OR DELETE ON stock_movements
                     FOR EACH ROW EXECUTE FUNCTION stock_movements_append_only();
