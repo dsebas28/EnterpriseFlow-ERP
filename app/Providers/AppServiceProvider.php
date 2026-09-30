@@ -19,10 +19,12 @@ use App\Models\Supplier;
 use App\Models\SupplierBill;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Notifications\Channels\TenantDatabaseChannel;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Channels\DatabaseChannel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -36,7 +38,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // The `database` notification channel also stores the company id.
+        $this->app->bind(DatabaseChannel::class, TenantDatabaseChannel::class);
     }
 
     /**

@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Models\Company;
+use App\Models\User;
+use App\Queries\NotificationFeedQuery;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
@@ -49,6 +51,12 @@ class HandleInertiaRequests extends Middleware
                 // UI hints only (show/hide actions); every action is re-authorised server-side.
                 'permissions' => fn (): array => $request->user()?->currentPermissions() ?? [],
             ],
+            // Unread count for the header bell (active company + personal).
+            // Deliberately not named `notifications`: page props of the same
+            // name (the notification list) would override it.
+            'unreadNotifications' => fn (): ?int => $request->user() instanceof User
+                ? app(NotificationFeedQuery::class)->unreadCount($request->user())
+                : null,
             'flash' => [
                 'status' => fn (): ?string => $request->session()->get('status'),
             ],

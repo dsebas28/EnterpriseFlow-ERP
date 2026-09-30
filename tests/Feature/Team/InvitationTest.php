@@ -28,11 +28,17 @@ function inviteViaHttp(User $admin, string $email, string $roleSlug = 'sales'): 
         ->assertSessionHasNoErrors();
 
     $token = null;
-    Notification::assertSentTo(new AnonymousNotifiable, CompanyInvitation::class, function (CompanyInvitation $n, array $channels, AnonymousNotifiable $notifiable) use ($email, &$token) {
+    $capture = function (CompanyInvitation $n) use (&$token) {
         $token = basename($n->url);
 
-        return $notifiable->routes['mail'] === $email;
-    });
+        return true;
+    };
+
+    // Existing accounts are notified as users (mail + bell); anyone else by email only.
+    $existing = User::firstWhere('email', $email);
+    $existing !== null
+        ? Notification::assertSentTo($existing, CompanyInvitation::class, fn (CompanyInvitation $n, array $channels) => $channels === ['mail', 'database'] && $capture($n))
+        : Notification::assertSentTo(new AnonymousNotifiable, CompanyInvitation::class, fn (CompanyInvitation $n, array $channels, AnonymousNotifiable $notifiable) => $notifiable->routes['mail'] === $email && $capture($n));
 
     auth()->logout();
 

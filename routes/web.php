@@ -16,6 +16,7 @@ use App\Http\Controllers\Finance\PaymentController;
 use App\Http\Controllers\Finance\SupplierBillController;
 use App\Http\Controllers\Inventory\StockController;
 use App\Http\Controllers\Inventory\StockMovementController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\PurchaseOrderWorkflowController;
 use App\Http\Controllers\Purchasing\SupplierController;
@@ -170,6 +171,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
         Route::get('audit', [AuditLogController::class, 'index'])->name('audit.index');
+
+        Route::controller(NotificationController::class)->prefix('notifications')->name('notifications.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('unread-count', 'unreadCount')->name('unread-count');
+            Route::post('read-all', 'markAllRead')->name('read-all');
+            Route::get('{id}', 'open')->whereUuid('id')->name('open');
+            Route::post('{id}/read', 'markRead')->whereUuid('id')->name('read');
+        });
 
         Route::prefix('team')->name('team.')->group(function () {
             Route::get('members', [MemberController::class, 'index'])->name('members.index');

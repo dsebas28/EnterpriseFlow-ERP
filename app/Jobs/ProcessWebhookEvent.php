@@ -4,7 +4,10 @@ namespace App\Jobs;
 
 use App\Enums\WebhookEventStatus;
 use App\Exceptions\BusinessRuleViolation;
+use App\Models\Company;
 use App\Models\WebhookEvent;
+use App\Notifications\SystemAlert;
+use App\Services\Notifications\Notifier;
 use App\Webhooks\Contracts\WebhookHandler;
 use App\Webhooks\UnprocessableWebhook;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -109,6 +112,31 @@ class ProcessWebhookEvent implements ShouldQueue
             'status' => WebhookEventStatus::Failed,
             'last_error' => Str::limit($e->getMessage(), 1000),
         ]);
+
+        $this->alertCompany($e);
+    }
+
+    /**
+     * A payment the provider collected but we could not apply needs a
+     * human: tell the administrators of the company the event names.
+     */
+    private function alertCompany(Throwable $e): void
+    {
+        rescue(function () use ($e): void {
+            $event = WebhookEvent::find($this->eventId);
+            $companyId = $event?->payload['data']['company_id'] ?? null;
+            $company = is_string($companyId) ? Company::find($companyId) : null;
+
+            if ($event === null || $company === null) {
+                return;
+            }
+
+            app(Notifier::class)->toPermittedMembers(new SystemAlert(
+                $company,
+                title: "A {$event->provider} event could not be applied",
+                body: sprintf('Event %s (%s) failed: %s', $event->external_id, $event->type, Str::limit($e->getMessage(), 200)),
+            ));
+        }, report: true);
     }
 
     private function log(): void

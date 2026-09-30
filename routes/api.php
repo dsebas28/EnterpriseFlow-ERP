@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\InventoryController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -38,6 +39,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
                 ->parameters(['purchases' => 'purchase_order']);
 
             Route::get('inventory', [InventoryController::class, 'index'])->name('inventory.index');
+
+            Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+            Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+            Route::post('notifications/{id}/read', [NotificationController::class, 'markRead'])->whereUuid('id')->name('notifications.read');
 
             Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
             Route::get('reports/sales', [ReportController::class, 'sales'])->name('reports.sales');

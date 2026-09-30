@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\NotificationPreferencesController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SessionController;
@@ -21,6 +22,9 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:6,1')
         ->name('sessions.destroy-others');
     Route::delete('settings/sessions/{session}', [SessionController::class, 'destroy'])->name('sessions.destroy');
+
+    Route::get('settings/notifications', [NotificationPreferencesController::class, 'edit'])->name('notification-preferences.edit');
+    Route::put('settings/notifications', [NotificationPreferencesController::class, 'update'])->name('notification-preferences.update');
 
     Route::get('settings/appearance', function () {
         return Inertia::render('settings/Appearance');

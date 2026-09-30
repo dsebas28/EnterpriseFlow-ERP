@@ -3,6 +3,7 @@
 namespace App\Actions\Team;
 
 use App\Enums\MembershipStatus;
+use App\Events\MemberJoinedCompany;
 use App\Exceptions\BusinessRuleViolation;
 use App\Models\Invitation;
 use App\Models\Membership;
@@ -26,7 +27,7 @@ final class AcceptInvitation
             throw new BusinessRuleViolation('This invitation was sent to a different email address.');
         }
 
-        return DB::transaction(function () use ($invitation, $user): Membership {
+        $membership = DB::transaction(function () use ($invitation, $user): Membership {
             // Lock the row: two concurrent accept requests cannot both succeed.
             $locked = Invitation::withoutGlobalScope(CompanyScope::class)
                 ->lockForUpdate()
@@ -54,5 +55,9 @@ final class AcceptInvitation
 
             return $membership;
         });
+
+        MemberJoinedCompany::dispatch($membership);
+
+        return $membership;
     }
 }

@@ -93,12 +93,27 @@ export interface Tenant {
     companies: CompanySummary[];
 }
 
+export type NotificationLevel = 'info' | 'success' | 'warning' | 'danger';
+
+export interface AppNotification {
+    id: string;
+    category: string;
+    title: string;
+    body: string;
+    url: string | null;
+    level: NotificationLevel;
+    company_name: string | null;
+    read_at: string | null;
+    created_at: string;
+}
+
 export interface SharedData extends PageProps {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
     flash: { status: string | null };
     tenant: Tenant | null;
+    unreadNotifications: number | null;
     ziggy: {
         location: string;
         url: string;

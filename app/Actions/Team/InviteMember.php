@@ -59,9 +59,12 @@ final class InviteMember
 
         // Queued notification; dispatched after commit so a rolled-back
         // invitation never produces an email.
-        Notification::route('mail', $email)->notify(
-            (new CompanyInvitation($invitation, $token))->afterCommit(),
-        );
+        $notification = (new CompanyInvitation($invitation, $token))->afterCommit();
+        $existing = User::query()->whereRaw('lower(email) = ?', [Str::lower($email)])->first();
+
+        $existing !== null
+            ? $existing->notify($notification)
+            : Notification::route('mail', $email)->notify($notification);
 
         return $invitation;
     }
