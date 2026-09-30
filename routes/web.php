@@ -8,6 +8,7 @@ use App\Http\Controllers\Catalog\ProductVariantController;
 use App\Http\Controllers\Catalog\WarehouseController;
 use App\Http\Controllers\Companies\OnboardingController;
 use App\Http\Controllers\Companies\SwitchCompanyController;
+use App\Http\Controllers\Finance\ExpenseController;
 use App\Http\Controllers\Finance\InvoiceController;
 use App\Http\Controllers\Finance\PaymentController;
 use App\Http\Controllers\Finance\SupplierBillController;
@@ -134,6 +135,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::post('{invoice}/cancel', 'cancel')->name('cancel');
                 Route::post('{invoice}/pdf', 'regeneratePdf')->middleware('throttle:10,1')->name('pdf.regenerate');
                 Route::get('{invoice}/pdf', 'downloadPdf')->name('pdf');
+            });
+
+            Route::controller(ExpenseController::class)->prefix('expenses')->name('expenses.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/', 'store')->name('store');
+                Route::post('categories', 'storeCategory')->name('categories.store');
+                // POST with _method=PUT: multipart uploads cannot use a real PUT in PHP.
+                Route::put('{expense}', 'update')->name('update');
+                Route::delete('{expense}', 'destroy')->name('destroy');
+                Route::post('{expense}/approve', 'approve')->name('approve');
+                Route::post('{expense}/reject', 'reject')->name('reject');
+                Route::get('{expense}/receipt', 'receipt')->name('receipt');
             });
 
             Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');

@@ -19,6 +19,7 @@ import {
     ReceiptText,
     Truck,
     Users,
+    Wallet,
     Warehouse,
 } from 'lucide-vue-next';
 import { computed } from 'vue';
@@ -61,6 +62,7 @@ const financeNavItems = computed(() =>
         { title: 'Invoices', url: '/finance/invoices', icon: FileText, visible: can('invoices.view') },
         { title: 'Supplier bills', url: '/finance/bills', icon: ReceiptText, visible: can('invoices.view') },
         { title: 'Payments', url: '/finance/payments', icon: Banknote, visible: can('payments.view') },
+        { title: 'Expenses', url: '/finance/expenses', icon: Wallet, visible: can('expenses.view') },
     ].filter((item) => item.visible),
 );
 
