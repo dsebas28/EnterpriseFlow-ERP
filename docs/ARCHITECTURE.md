@@ -66,6 +66,7 @@ app/
 ├── Models/          Eloquent: relaciones, casts, scopes. Sin orquestación.
 ├── Notifications/   Canales database + mail.
 ├── Policies/        Autorización por modelo, siempre evaluada en backend.
+├── Queries/         Query Objects de listados (búsqueda, filtros, orden por allow-list), compartidos por web y API.
 ├── Services/        Servicios reutilizables con estado o colaboradores (InventoryService, DocumentNumberGenerator…).
 └── Support/         Infraestructura transversal (Tenancy/, Money/, Audit/, Api/…).
 ```
@@ -174,6 +175,17 @@ erDiagram
 
 Tablas de soporte: `document_sequences` (numeración sin huecos por empresa y tipo), `invitations`, `audit_logs`, `webhook_events`, `report_exports` (estado de exportaciones asíncronas), `notifications`, `jobs`, `failed_jobs`, `personal_access_tokens`.
 
+### 5.1 Catálogo y dinero
+
+- **`Money` (value object):** entero en unidades menores + moneda. Se construye desde strings decimales (`"123.45"`) sin pasar por `float`; los decimales dependen de la moneda (ISO 4217: COP/USD 2, CLP/JPY 0, KWD 3). Los porcentajes (impuestos, descuentos) usan *basis points* y redondeo half-up en aritmética entera.
+- **Formato JSON uniforme** para importes en web y API: `{ "amount": 7990000, "decimal": "79900.00", "currency": "COP" }`. El cliente solo formatea con `Intl`; nunca recalcula.
+- **Variantes:** `products.type ∈ {simple, variable, variant}`. Un producto `variable` es una plantilla sin stock; sus variantes (`parent_id`) son los artículos vendibles. Un solo nivel. El tipo es inmutable tras crearse. Categoría e impuesto se heredan del padre; la combinación de atributos es única entre hermanas (sin importar el orden).
+- **Identificadores:** SKU y código de barras únicos **por empresa** (índice compuesto), normalizados antes de validar para que la validación coincida exactamente con el índice. El SKU de un producto borrado queda reservado.
+- **Categorías:** árbol (`parent_id` con FK compuesta), sin ciclos; filtrar por una categoría incluye sus descendientes. No se borran con productos o subcategorías.
+- **Almacenes:** cada empresa nace con un almacén `MAIN`. "Un solo almacén por defecto por empresa" es un **índice único parcial** (`WHERE is_default AND deleted_at IS NULL`), válido en PostgreSQL y SQLite.
+- **Imágenes:** validación por contenido (MIME real, no extensión), sin SVG, ≤ 2 MB y ≤ 4000 px; nombre aleatorio bajo `companies/{company_id}/products/{product_id}/`; máximo 8 por producto. Las imágenes de producto son públicas; documentos sensibles (facturas, comprobantes) irán en un disco privado.
+- **Listados:** Query Objects (`app/Queries`) con búsqueda, filtros y ordenación por *allow-list*, reutilizados por la web y la API.
+
 ## 6. Inventario basado en movimientos
 
 - `stock_movements` es un **ledger append-only**: nunca se actualiza ni borra. Cada fila registra producto, almacén, cantidad con signo, tipo, costo unitario, usuario, referencia polimórfica (venta, compra, ajuste…), fecha y observaciones.
@@ -243,7 +255,7 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 2. ✅ Base de datos núcleo + multi-tenancy
 3. ✅ Autenticación (sesiones, invitaciones, desactivación)
 4. ✅ Roles y permisos
-5. Productos, categorías, variantes, almacenes
+5. ✅ Productos, categorías, variantes, almacenes
 6. Inventario (ledger + proyección)
 7. Compras
 8. Ventas

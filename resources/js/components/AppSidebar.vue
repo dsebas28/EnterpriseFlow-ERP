@@ -4,7 +4,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { usePermissions } from '@/composables/usePermissions';
 import { Link } from '@inertiajs/vue3';
-import { KeyRound, LayoutGrid, Users } from 'lucide-vue-next';
+import { FolderTree, KeyRound, LayoutGrid, Package, Users, Warehouse } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AppLogo from './AppLogo.vue';
 
@@ -17,6 +17,14 @@ const mainNavItems = [
         icon: LayoutGrid,
     },
 ];
+
+const catalogNavItems = computed(() =>
+    [
+        { title: 'Products', url: '/catalog/products', icon: Package, visible: can('products.view') },
+        { title: 'Categories', url: '/catalog/categories', icon: FolderTree, visible: canAny('products.view', 'categories.manage') },
+        { title: 'Warehouses', url: '/inventory/warehouses', icon: Warehouse, visible: canAny('warehouses.view', 'warehouses.manage') },
+    ].filter((item) => item.visible),
+);
 
 const teamNavItems = computed(() =>
     [
@@ -42,6 +50,7 @@ const teamNavItems = computed(() =>
 
         <SidebarContent>
             <NavMain label="Platform" :items="mainNavItems" />
+            <NavMain v-if="catalogNavItems.length" label="Catalog" :items="catalogNavItems" />
             <NavMain v-if="teamNavItems.length" label="Team" :items="teamNavItems" />
         </SidebarContent>
 

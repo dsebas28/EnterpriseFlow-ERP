@@ -3,12 +3,14 @@
 namespace App\Actions\Companies;
 
 use App\Actions\Roles\ProvisionSystemRoles;
+use App\Actions\Warehouses\SaveWarehouse;
 use App\DTOs\CompanyData;
 use App\Enums\MembershipStatus;
 use App\Enums\SystemRole;
 use App\Models\Company;
 use App\Models\Membership;
 use App\Models\User;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -17,7 +19,11 @@ use Illuminate\Support\Facades\DB;
  */
 final class CreateCompany
 {
-    public function __construct(private readonly ProvisionSystemRoles $provisionRoles) {}
+    public function __construct(
+        private readonly ProvisionSystemRoles $provisionRoles,
+        private readonly SaveWarehouse $saveWarehouse,
+        private readonly TenantContext $tenant,
+    ) {}
 
     public function handle(User $owner, CompanyData $data): Company
     {
@@ -34,6 +40,15 @@ final class CreateCompany
 
             $roles = $this->provisionRoles->handle($company);
             $membership->syncRoles([$roles[SystemRole::Owner->value]]);
+
+            // Every company starts with one default warehouse so stock can be
+            // recorded from day one.
+            $this->tenant->run($company, fn () => $this->saveWarehouse->handle(null, [
+                'code' => 'MAIN',
+                'name' => 'Main warehouse',
+                'city' => $company->city,
+                'is_default' => true,
+            ]));
 
             return $company;
         });
