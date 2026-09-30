@@ -157,6 +157,12 @@ const fieldClass =
 
             <PageAlerts />
 
+            <div v-if="can('audit.view') && product" class="-mt-3 text-right">
+                <Link :href="route('audit.index', { type: 'product', id: product.id })" class="text-xs text-muted-foreground hover:text-foreground">
+                    View change history
+                </Link>
+            </div>
+
             <form class="grid gap-6 lg:grid-cols-3" @submit.prevent="submit">
                 <fieldset :disabled="!canEdit" class="space-y-6 lg:col-span-2">
                     <section class="space-y-4 rounded-lg border p-5">

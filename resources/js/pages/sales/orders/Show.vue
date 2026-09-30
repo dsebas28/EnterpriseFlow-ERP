@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatMoney, type MoneyValue } from '@/composables/useMoney';
+import { usePermissions } from '@/composables/usePermissions';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
@@ -56,6 +57,8 @@ const props = defineProps<{
     defaultDueDate: string;
     can: { invoice: boolean; edit: boolean; markPending: boolean; returnToDraft: boolean; confirm: boolean; cancel: boolean; delete: boolean };
 }>();
+
+const { can: hasPermission } = usePermissions();
 
 const sale = computed(() => props.sale.data);
 
@@ -143,6 +146,12 @@ const formatDateTime = (value: string) => new Date(value).toLocaleString(undefin
             </div>
 
             <PageAlerts />
+
+            <div v-if="hasPermission('audit.view')" class="-mt-3 text-right">
+                <Link :href="route('audit.index', { type: 'sale', id: sale.id })" class="text-xs text-muted-foreground hover:text-foreground">
+                    View change history
+                </Link>
+            </div>
 
             <div
                 v-if="invoice || can.invoice"

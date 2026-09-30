@@ -8,6 +8,7 @@ use App\Models\Invitation;
 use App\Models\Role;
 use App\Models\User;
 use App\Notifications\CompanyInvitation;
+use App\Support\Audit\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
@@ -47,6 +48,11 @@ final class InviteMember
                 'invited_by' => $inviter->id,
                 'expires_at' => now()->addDays(Invitation::TTL_DAYS),
             ])->save();
+
+            app(AuditLogger::class)->record('invitation.sent', $invitation, null, [
+                'email' => $email,
+                'role' => $role->name,
+            ]);
 
             return $invitation;
         });

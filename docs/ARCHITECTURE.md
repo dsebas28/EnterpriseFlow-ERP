@@ -313,7 +313,14 @@ Los workers no tienen sesión, así que un job debe saber para qué empresa trab
 
 ## 8. Auditoría
 
-Trait `Auditable` en modelos sensibles → registra `created/updated/deleted/restored` con valores anteriores y nuevos (solo campos cambiados, excluyendo secretos), usuario, empresa, IP, user agent y URL. Acciones de dominio relevantes (cancelar venta, anular pago, cambiar roles) registran eventos explícitos. Además, los eventos de seguridad (login fallido, cambio de roles, cambio de empresa) se escriben en el canal de log `security`.
+- **`audit_logs` append-only**, protegida como el ledger de stock: el modelo lanza excepción en `updating/deleting` y **triggers** (PostgreSQL y SQLite) rechazan `UPDATE`/`DELETE` incluso con SQL crudo. Un registro de auditoría editable no prueba nada.
+- **Trait `Auditable`** en los modelos sensibles (empresa, productos, categorías, almacenes, clientes, proveedores, ventas, órdenes de compra, facturas, facturas de proveedor, pagos, gastos, roles): registra `created`, `updated`, `deleted`, `restored` con **solo los campos modificados** (antes → después). Nunca guarda `password`, `remember_token`, `token_hash` ni timestamps; un `touch()` no genera entrada.
+- **Eventos explícitos** para cambios que no son atributos del modelo: `role.permissions_changed` (permisos añadidos/quitados), `member.roles_changed`, `member.suspended`, `member.reactivated`, `invitation.sent`.
+- **Contexto completo**: usuario, empresa, IP, user agent, método y URL; en colas/consola el usuario queda vacío (acción del sistema) y la URL `console`.
+- **Misma transacción que el cambio**: si la operación se revierte, su auditoría también (nunca se registra algo que no ocurrió).
+- **Consulta**: página *Audit trail* (`audit.view`) con filtros por tipo de registro, id, evento, usuario y fechas, y diff campo a campo; enlaces "View change history" desde productos, ventas, facturas y órdenes de compra. Filtrada por empresa (scope fail-closed).
+- Se replica en el canal de log `audit` (JSON, retención 365 días), separado de aplicación, colas y seguridad.
+- El ledger de stock no se audita de nuevo: ya es su propio registro inmutable con usuario, fecha y referencia.
 
 ## 9. Asíncrono: colas, scheduler y webhooks
 
@@ -332,7 +339,7 @@ Trait `Auditable` en modelos sensibles → registra `created/updated/deleted/res
 
 ## 11. Observabilidad
 
-- Canales de log: `app_json` (aplicación), `queue` (jobs), `security` (auth/autorización/auditoría) — JSON por línea con contexto (`company_id`, `user_id`, `request_id`).
+- Canales de log separados, JSON por línea con contexto (`company_id`, `user_id`, IP): `app_json` (aplicación), `queue` (jobs y exportaciones), `security` (autenticación, accesos denegados, cambios de empresa; 90 días) y `audit` (cambios de datos; 365 días).
 - `GET /health` comprueba aplicación, base de datos y Redis y devuelve `200` o `503` con detalle por componente.
 
 ## 12. Entornos y verificación
@@ -371,7 +378,7 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 9. ✅ Facturación (clientes con PDF asíncrono, proveedores con two-way match)
 10. ✅ Pagos (cobros y pagos, sin sobrepagos, anulación con historial)
 11. ✅ Gastos, reportes con exportación y dashboard con datos reales
-12. Auditoría
+12. ✅ Auditoría
 13. API v1 + OpenAPI
 14. Jobs/colas, notificaciones, scheduler, webhooks
 15. Docker, CI/CD, documentación final

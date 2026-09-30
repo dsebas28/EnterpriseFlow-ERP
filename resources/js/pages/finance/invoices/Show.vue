@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatMoney, type MoneyValue } from '@/composables/useMoney';
+import { usePermissions } from '@/composables/usePermissions';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
@@ -56,6 +57,8 @@ const props = defineProps<{
     paymentForm: { methods: { value: string; label: string }[]; today: string; currency: { code: string; decimals: number } };
     can: { edit: boolean; issue: boolean; cancel: boolean; regeneratePdf: boolean; pay: boolean; voidPayments: boolean };
 }>();
+
+const { can: hasPermission } = usePermissions();
 
 const invoice = computed(() => props.invoice.data);
 
@@ -142,6 +145,12 @@ const formatDate = (value: string) => new Date(`${value}T00:00:00`).toLocaleDate
             </div>
 
             <PageAlerts />
+
+            <div v-if="hasPermission('audit.view')" class="-mt-3 text-right">
+                <Link :href="route('audit.index', { type: 'invoice', id: invoice.id })" class="text-xs text-muted-foreground hover:text-foreground">
+                    View change history
+                </Link>
+            </div>
 
             <p
                 v-if="invoice.status === 'cancelled'"

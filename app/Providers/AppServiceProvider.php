@@ -2,13 +2,18 @@
 
 namespace App\Providers;
 
+use App\Models\Category;
 use App\Models\Company;
 use App\Models\Customer;
+use App\Models\Expense;
+use App\Models\Invitation;
 use App\Models\Invoice;
+use App\Models\Membership;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseReceipt;
+use App\Models\Role;
 use App\Models\Sale;
 use App\Models\Supplier;
 use App\Models\SupplierBill;
@@ -72,6 +77,11 @@ class AppServiceProvider extends ServiceProvider
             'invoice' => Invoice::class,
             'supplier_bill' => SupplierBill::class,
             'payment' => Payment::class,
+            'expense' => Expense::class,
+            'category' => Category::class,
+            'role' => Role::class,
+            'membership' => Membership::class,
+            'invitation' => Invitation::class,
         ]);
     }
 

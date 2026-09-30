@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Catalog\CategoryController;
 use App\Http\Controllers\Catalog\ProductController;
 use App\Http\Controllers\Catalog\ProductImageController;
@@ -167,6 +168,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('{key}', 'show')->where('key', '[a-z-]+')->name('show');
             Route::post('{key}/exports', 'export')->where('key', '[a-z-]+')->middleware('throttle:20,1')->name('export');
         });
+
+        Route::get('audit', [AuditLogController::class, 'index'])->name('audit.index');
 
         Route::prefix('team')->name('team.')->group(function () {
             Route::get('members', [MemberController::class, 'index'])->name('members.index');

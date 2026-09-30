@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\InvoiceStatus;
 use App\Enums\PdfStatus;
 use App\Exceptions\InvalidStateTransition;
+use App\Support\Audit\Auditable;
 use App\Support\Money\Money;
 use App\Support\Tenancy\BelongsToCompany;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -44,7 +45,7 @@ use Illuminate\Support\Carbon;
  */
 class Invoice extends Model
 {
-    use BelongsToCompany, HasUlids;
+    use Auditable, BelongsToCompany, HasUlids;
 
     public const PDF_DISK = 'local';
 
