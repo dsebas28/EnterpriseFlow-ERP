@@ -9,6 +9,7 @@ use App\Http\Controllers\Catalog\WarehouseController;
 use App\Http\Controllers\Companies\OnboardingController;
 use App\Http\Controllers\Companies\SwitchCompanyController;
 use App\Http\Controllers\Finance\InvoiceController;
+use App\Http\Controllers\Finance\PaymentController;
 use App\Http\Controllers\Finance\SupplierBillController;
 use App\Http\Controllers\Inventory\StockController;
 use App\Http\Controllers\Inventory\StockMovementController;
@@ -134,6 +135,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::post('{invoice}/pdf', 'regeneratePdf')->middleware('throttle:10,1')->name('pdf.regenerate');
                 Route::get('{invoice}/pdf', 'downloadPdf')->name('pdf');
             });
+
+            Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
+            Route::post('payments/{payment}/void', [PaymentController::class, 'void'])->name('payments.void');
+            Route::post('invoices/{invoice}/payments', [PaymentController::class, 'storeForInvoice'])->name('invoices.payments.store');
+            Route::post('bills/{bill}/payments', [PaymentController::class, 'storeForBill'])->name('bills.payments.store');
 
             Route::controller(SupplierBillController::class)->prefix('bills')->name('bills.')->group(function () {
                 Route::get('/', 'index')->name('index');

@@ -10,10 +10,13 @@ use App\Enums\PdfStatus;
 use App\Exceptions\BusinessRuleViolation;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\InvoiceResource;
+use App\Http\Resources\PaymentResource;
 use App\Jobs\GenerateInvoicePdf;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\Sale;
 use App\Queries\InvoiceIndexQuery;
+use App\Support\Finance\PaymentFormOptions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -58,12 +61,16 @@ class InvoiceController extends Controller
     {
         Gate::authorize('view', $invoice);
 
-        $invoice->load(['items', 'customer', 'sale', 'issuer']);
+        $invoice->load(['items', 'customer', 'sale', 'issuer', 'payments.creator', 'payments.voider']);
         $user = $request->user();
 
         return Inertia::render('finance/invoices/Show', [
             'invoice' => InvoiceResource::make($invoice),
+            'payments' => PaymentResource::collection($invoice->payments),
+            'paymentForm' => PaymentFormOptions::make(),
             'can' => [
+                'pay' => $invoice->status->isOpen() && ($user?->can('create', Payment::class) ?? false),
+                'voidPayments' => $user?->can('void', new Payment) ?? false,
                 'edit' => $invoice->status === InvoiceStatus::Draft && ($user?->can('update', $invoice) ?? false),
                 'issue' => $invoice->status === InvoiceStatus::Draft && ($user?->can('update', $invoice) ?? false),
                 'cancel' => $invoice->status->canTransitionTo(InvoiceStatus::Cancelled) && $invoice->amount_paid === 0 && ($user?->can('cancel', $invoice) ?? false),

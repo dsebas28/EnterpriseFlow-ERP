@@ -273,7 +273,16 @@ Ambos documentos comparten `InvoiceStatus`: `draft → issued → partially_paid
 - **Anti-duplicados:** el número de factura del proveedor es único por proveedor (índice parcial que excluye anuladas).
 - Anular libera las cantidades facturadas para registrar la factura correcta.
 
-### 7.4 Jobs con contexto de tenant
+### 7.4 Pagos
+
+- **Un módulo, dos direcciones:** `incoming` (cobro de una factura) y `outgoing` (pago de una factura de proveedor). En lugar de un `morphTo`, el pago tiene dos FKs anulables (`invoice_id`, `supplier_bill_id`) con claves compuestas por empresa: la BD sigue impidiendo que un pago apunte a un documento de otra empresa.
+- **Sin sobrepagos, incluso en concurrencia:** `RecordPayment` bloquea el documento (`FOR UPDATE`) y valida `importe ≤ saldo` con el saldo releído bajo el bloqueo.
+- **`amount_paid` = Σ pagos `posted`**, recalculado desde el historial en cada registro o anulación (`Settlement`), nunca sumado o restado en sitio: no puede desincronizarse del historial.
+- **Estados de pago derivados de importes** (`InvoiceStatus::fromSettlement`): `paid` si el saldo es 0; si no, `overdue` si ya venció o `partially_paid`. No son transiciones de usuario, así que anular un pago devuelve el documento al estado correcto sin reglas especiales. La venta refleja los pagos de su factura (`amount_paid`, `confirmed → partially_paid → paid`).
+- **Inmutables:** un pago registrado no se edita ni se borra (el modelo lo impide). Solo se **anula** con motivo, usuario y fecha; sigue visible en el historial y en los listados (tachado).
+- `PaymentReceived` se emite tras el commit (notificaciones, fase 16).
+
+### 7.5 Jobs con contexto de tenant
 
 Los workers no tienen sesión, así que un job debe saber para qué empresa trabaja:
 - El trait `TenantAware` captura `company_id` del `TenantContext` al crear el job y declara el *job middleware* `RestoreTenantContext`, que ejecuta `handle()` dentro de `TenantContext::run($company)`.
@@ -339,7 +348,7 @@ Se añade una librería solo cuando Laravel no cubre la necesidad:
 7. ✅ Compras (proveedores, órdenes, aprobación, recepciones)
 8. ✅ Ventas (clientes, notas, confirmación con stock, cancelación compensatoria)
 9. ✅ Facturación (clientes con PDF asíncrono, proveedores con two-way match)
-10. Pagos
+10. ✅ Pagos (cobros y pagos, sin sobrepagos, anulación con historial)
 11. Gastos y reportes
 12. Auditoría
 13. API v1 + OpenAPI
