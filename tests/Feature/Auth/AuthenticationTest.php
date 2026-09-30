@@ -1,54 +1,49 @@
 <?php
 
-namespace Tests\Feature\Auth;
-
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 
-class AuthenticationTest extends TestCase
-{
-    use RefreshDatabase;
+it('renders the landing and login pages', function () {
+    $this->get('/')->assertOk();
+    $this->get('/login')->assertOk();
+});
 
-    public function test_login_screen_can_be_rendered()
-    {
-        $response = $this->get('/login');
+it('authenticates with valid credentials', function () {
+    $user = User::factory()->create();
 
-        $response->assertStatus(200);
+    $this->post('/login', ['email' => $user->email, 'password' => 'password'])
+        ->assertRedirect(route('dashboard', absolute: false));
+
+    $this->assertAuthenticatedAs($user);
+});
+
+it('rejects an invalid password', function () {
+    $user = User::factory()->create();
+
+    $this->post('/login', ['email' => $user->email, 'password' => 'wrong-password'])
+        ->assertSessionHasErrors('email');
+
+    $this->assertGuest();
+});
+
+it('locks the login out after five failed attempts per email and IP', function () {
+    $this->freezeTime();
+    $user = User::factory()->create();
+
+    foreach (range(1, 5) as $attempt) {
+        $this->post('/login', ['email' => $user->email, 'password' => 'wrong-password']);
     }
 
-    public function test_users_can_authenticate_using_the_login_screen()
-    {
-        $user = User::factory()->create();
+    // Even the right password is refused while locked out.
+    $this->post('/login', ['email' => $user->email, 'password' => 'password'])
+        ->assertSessionHasErrors(['email' => __('auth.throttle', ['seconds' => 60, 'minutes' => 1])]);
 
-        $response = $this->post('/login', [
-            'email' => $user->email,
-            'password' => 'password',
-        ]);
+    $this->assertGuest();
+});
 
-        $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
-    }
+it('logs out', function () {
+    $this->actingAs(User::factory()->create())
+        ->post('/logout')
+        ->assertRedirect('/');
 
-    public function test_users_can_not_authenticate_with_invalid_password()
-    {
-        $user = User::factory()->create();
-
-        $this->post('/login', [
-            'email' => $user->email,
-            'password' => 'wrong-password',
-        ]);
-
-        $this->assertGuest();
-    }
-
-    public function test_users_can_logout()
-    {
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user)->post('/logout');
-
-        $this->assertGuest();
-        $response->assertRedirect('/');
-    }
-}
+    $this->assertGuest();
+});
