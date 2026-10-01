@@ -44,7 +44,7 @@ RUN npm run build
 ############################################################
 # 3. Runtime: PHP-FPM
 ############################################################
-FROM php:8.3-fpm-alpine AS app
+FROM php:8.5-fpm-alpine AS app
 
 # install-php-extensions resolves build dependencies and removes them
 # afterwards, keeping the image small.
