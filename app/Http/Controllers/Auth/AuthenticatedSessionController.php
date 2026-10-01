@@ -27,6 +27,7 @@ class AuthenticatedSessionController extends Controller
                 'password' => config('demo.password'),
                 'accounts' => collect((array) config('demo.accounts'))
                     ->map(fn (array $account, string $role) => [
+                        'key' => $role,
                         'role' => SystemRole::from($role)->label(),
                         'email' => $account['email'],
                         'summary' => $account['summary'],

@@ -23,6 +23,7 @@ it('lists one demo account per role in demo mode', function () {
         ->where('demo.password', 'password')
         ->has('demo.accounts', count(SystemRole::cases()))
         ->where('demo.accounts.0', [
+            'key' => 'owner',
             'role' => 'Company Owner',
             'email' => 'owner@demo.test',
             'summary' => 'Everything, in both demo companies',

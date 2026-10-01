@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { LoaderCircle } from 'lucide-vue-next';
+import { BadgeDollarSign, Briefcase, Calculator, Check, Crown, Eye, LoaderCircle, ShieldCheck, Warehouse, type LucideIcon } from 'lucide-vue-next';
 import { ref } from 'vue';
 
 interface DemoAccount {
+    key: string;
     role: string;
     email: string;
     summary: string;
@@ -43,13 +44,23 @@ const useAccount = (account: DemoAccount, password: string) => {
     form.clearErrors();
     (submitButton.value?.$el as HTMLButtonElement | undefined)?.focus();
 };
+
+const roleIcons: Record<string, LucideIcon> = {
+    owner: Crown,
+    administrator: ShieldCheck,
+    manager: Briefcase,
+    accountant: Calculator,
+    sales: BadgeDollarSign,
+    warehouse: Warehouse,
+    employee: Eye,
+};
 </script>
 
 <template>
-    <AuthBase title="Sign in" description="Use the email and password of your EnterpriseFlow account.">
+    <AuthBase title="Welcome back" description="Sign in to your EnterpriseFlow workspace.">
         <Head title="Sign in" />
 
-        <div v-if="status" class="mb-6 rounded-md bg-ledger-green/10 px-4 py-3 text-sm font-medium text-ledger-green">
+        <div v-if="status" class="mb-6 rounded-lg bg-brand-positive/10 px-4 py-3 text-sm font-medium text-brand-positive">
             {{ status }}
         </div>
 
@@ -64,7 +75,7 @@ const useAccount = (account: DemoAccount, password: string) => {
                     autocomplete="email"
                     v-model="form.email"
                     placeholder="you@company.com"
-                    class="h-11 bg-ledger-paper"
+                    class="h-11"
                 />
                 <InputError :message="form.errors.email" />
             </div>
@@ -74,7 +85,7 @@ const useAccount = (account: DemoAccount, password: string) => {
                     <Label for="password">Password</Label>
                     <TextLink v-if="canResetPassword" :href="route('password.request')" class="text-sm">Forgot your password?</TextLink>
                 </div>
-                <Input id="password" type="password" required autocomplete="current-password" v-model="form.password" class="h-11 bg-ledger-paper" />
+                <Input id="password" type="password" required autocomplete="current-password" v-model="form.password" class="h-11" />
                 <InputError :message="form.errors.password" />
             </div>
 
@@ -83,42 +94,51 @@ const useAccount = (account: DemoAccount, password: string) => {
                 Keep me signed in
             </Label>
 
-            <Button ref="submitButton" type="submit" class="mt-2 h-11 w-full text-base" :disabled="form.processing">
+            <Button ref="submitButton" type="submit" class="mt-1 h-11 w-full text-base" :disabled="form.processing">
                 <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
                 Sign in
             </Button>
 
-            <p class="text-center text-sm text-ledger-muted">
+            <p class="text-center text-sm text-brand-muted">
                 New to EnterpriseFlow?
                 <TextLink :href="route('register')">Create an account</TextLink>
             </p>
         </form>
 
-        <section v-if="demo" class="mt-10 border-t border-ledger-rule pt-6" aria-labelledby="demo-heading">
-            <h2 id="demo-heading" class="font-medium">Try a demo account</h2>
-            <p class="mt-1 text-sm text-ledger-muted">
-                Each one sees what its role allows. Choosing one fills in the form; the password is
-                <span class="font-medium text-ledger-ink">{{ demo.password }}</span
-                >.
-            </p>
+        <template v-if="demo" #after>
+            <section class="mt-8" aria-labelledby="demo-heading">
+                <div class="flex items-baseline justify-between gap-4">
+                    <h2 id="demo-heading" class="font-medium">Try a demo account</h2>
+                    <p class="text-xs text-brand-muted">
+                        Password <span class="font-semibold text-brand-ink">{{ demo.password }}</span>
+                    </p>
+                </div>
+                <p class="mt-1 text-sm text-brand-muted">Each role sees only what it is allowed to. Choosing one fills in the form.</p>
 
-            <ul class="mt-4 grid gap-1">
-                <li v-for="account in demo.accounts" :key="account.email">
-                    <button
-                        type="button"
-                        class="flex w-full items-baseline justify-between gap-4 rounded-md px-3 py-2 text-left hover:bg-ledger-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-ledger-green"
-                        :class="form.email === account.email ? 'bg-ledger-paper ring-1 ring-ledger-rule' : ''"
-                        :aria-pressed="form.email === account.email"
-                        @click="useAccount(account, demo.password)"
-                    >
-                        <span class="min-w-0">
-                            <span class="block text-sm font-medium">{{ account.role }}</span>
-                            <span class="block text-xs text-ledger-muted">{{ account.summary }}</span>
-                        </span>
-                        <span class="shrink-0 text-xs text-ledger-muted">{{ account.email }}</span>
-                    </button>
-                </li>
-            </ul>
-        </section>
+                <ul class="mt-4 grid gap-2 sm:grid-cols-2">
+                    <li v-for="(account, index) in demo.accounts" :key="account.email">
+                        <button
+                            type="button"
+                            class="group flex h-full w-full items-start gap-3 rounded-xl border bg-brand-surface p-3 text-left transition-colors hover:border-brand-primary/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+                            :class="form.email === account.email ? 'border-brand-primary ring-1 ring-brand-primary' : 'border-brand-line'"
+                            :aria-pressed="form.email === account.email"
+                            @click="useAccount(account, demo.password)"
+                        >
+                            <span
+                                class="flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                                :class="index === 0 ? 'bg-[#f59e0b] text-[#1e1b4b]' : 'bg-brand-primary/10 text-brand-primary'"
+                            >
+                                <Check v-if="form.email === account.email" class="size-4" />
+                                <component :is="roleIcons[account.key] ?? Eye" v-else class="size-4" />
+                            </span>
+                            <span class="min-w-0">
+                                <span class="block text-sm font-medium">{{ account.role }}</span>
+                                <span class="block text-xs leading-snug text-brand-muted">{{ account.summary }}</span>
+                            </span>
+                        </button>
+                    </li>
+                </ul>
+            </section>
+        </template>
     </AuthBase>
 </template>
