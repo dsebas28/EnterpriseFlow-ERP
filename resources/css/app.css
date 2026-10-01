@@ -90,3 +90,64 @@ html {
         @apply bg-background text-foreground;
     }
 }
+
+/*
+| "Ledger paper": public pages (home, sign in). Cool green-grey paper, blue-
+| black ink, ledger green for money in and red only for money and stock out.
+*/
+@layer base {
+    /* RGB channels, so Tailwind opacity modifiers (bg-ledger-ink/90) work. */
+    :root {
+        --ledger-paper: 243 246 242; /* #f3f6f2 */
+        --ledger-sheet: 251 252 250; /* #fbfcfa */
+        --ledger-ink: 21 34 46; /* #15222e */
+        --ledger-muted: 94 110 119; /* #5e6e77 */
+        --ledger-rule: 214 223 216; /* #d6dfd8 */
+        --ledger-green: 46 107 87; /* #2e6b57 */
+        --ledger-red: 169 68 46; /* #a9442e */
+    }
+
+    .dark {
+        --ledger-paper: 14 21 19; /* #0e1513 */
+        --ledger-sheet: 19 28 25; /* #131c19 */
+        --ledger-ink: 228 234 230; /* #e4eae6 */
+        --ledger-muted: 147 163 156; /* #93a39c */
+        --ledger-rule: 36 49 44; /* #24312c */
+        --ledger-green: 111 191 159; /* #6fbf9f */
+        --ledger-red: 224 128 106; /* #e0806a */
+    }
+}
+
+@layer utilities {
+    /* Ruled ledger paper: one hairline every 2rem. */
+    .bg-ledger-ruled {
+        background-image: repeating-linear-gradient(
+            to bottom,
+            transparent 0,
+            transparent calc(2rem - 1px),
+            rgb(var(--ledger-rule)) calc(2rem - 1px),
+            rgb(var(--ledger-rule)) 2rem
+        );
+    }
+
+    .ledger-print {
+        animation: ledger-print 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    }
+
+    @keyframes ledger-print {
+        from {
+            opacity: 0;
+            clip-path: inset(0 100% 0 0);
+        }
+        to {
+            opacity: 1;
+            clip-path: inset(0 0 0 0);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .ledger-print {
+            animation: none;
+        }
+    }
+}

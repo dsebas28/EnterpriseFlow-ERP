@@ -157,20 +157,14 @@ class DemoSeeder extends Seeder
 
     private function createUsers(): void
     {
-        $people = [
-            SystemRole::Owner->value => ['Sofía Ramírez', 'owner'],
-            SystemRole::Administrator->value => ['Daniel Ortega', 'admin'],
-            SystemRole::Manager->value => ['Laura Méndez', 'manager'],
-            SystemRole::Accountant->value => ['Carlos Rivas', 'accountant'],
-            SystemRole::Sales->value => ['Valentina Cruz', 'sales'],
-            SystemRole::Warehouse->value => ['Andrés Molina', 'warehouse'],
-            SystemRole::Employee->value => ['Camila Torres', 'employee'],
-        ];
+        // Same list the sign-in page shows in demo mode (config/demo.php).
+        /** @var array<string, array{name: string, email: string}> $accounts */
+        $accounts = config('demo.accounts');
 
-        foreach ($people as $role => [$name, $mailbox]) {
-            $user = new User(['name' => $name, 'email' => "{$mailbox}@demo.test", 'password' => 'password']);
+        foreach ($accounts as $role => $account) {
+            $user = new User(['name' => $account['name'], 'email' => $account['email'], 'password' => (string) config('demo.password')]);
             $user->forceFill(['email_verified_at' => now()])->save();
-            $this->users[$role] = $user;
+            $this->users[SystemRole::from($role)->value] = $user;
         }
     }
 
