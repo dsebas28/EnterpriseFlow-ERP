@@ -4,7 +4,7 @@ import { computed, ref } from 'vue';
 /**
  * Single-series column chart of daily sales (last 30 days).
  *
- * Follows the dataviz spec: one validated hue (blue, light/dark steps),
+ * Follows the dataviz spec: one validated hue (brand indigo, light/dark steps),
  * columns capped at 24px with a 4px rounded data-end and a 2px surface
  * gap, recessive hairline grid, clean rounded ticks, and a per-column
  * hover tooltip with a hit target taller than the mark. A single series
@@ -160,12 +160,16 @@ const tooltipLeft = computed(() => (hovered.value === null ? 0 : ((x(hovered.val
 </template>
 
 <style scoped>
-/* Validated series hue: blue slot 1, stepped separately for each mode. */
+/*
+ * Brand series hue, validated per mode with the dataviz palette checks
+ * (lightness band, chroma, contrast vs surface): indigo #4f46e5 on light,
+ * #6366f1 on dark. The logo indigo #312e81 is too dark for data marks.
+ */
 .chart-bar {
-    fill: #2a78d6;
+    fill: #4f46e5;
     transition: opacity 120ms;
 }
 :global(.dark) .chart-bar {
-    fill: #3987e5;
+    fill: #6366f1;
 }
 </style>

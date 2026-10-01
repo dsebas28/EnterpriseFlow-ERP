@@ -21,15 +21,18 @@ export default {
                 sm: 'calc(var(--radius) - 4px)',
             },
             colors: {
-                // Public pages palette (resources/css/app.css).
-                ledger: {
-                    paper: 'rgb(var(--ledger-paper) / <alpha-value>)',
-                    sheet: 'rgb(var(--ledger-sheet) / <alpha-value>)',
-                    ink: 'rgb(var(--ledger-ink) / <alpha-value>)',
-                    muted: 'rgb(var(--ledger-muted) / <alpha-value>)',
-                    rule: 'rgb(var(--ledger-rule) / <alpha-value>)',
-                    green: 'rgb(var(--ledger-green) / <alpha-value>)',
-                    red: 'rgb(var(--ledger-red) / <alpha-value>)',
+                // Brand palette (resources/css/app.css).
+                brand: {
+                    paper: 'rgb(var(--brand-paper) / <alpha-value>)',
+                    surface: 'rgb(var(--brand-surface) / <alpha-value>)',
+                    ink: 'rgb(var(--brand-ink) / <alpha-value>)',
+                    muted: 'rgb(var(--brand-muted) / <alpha-value>)',
+                    line: 'rgb(var(--brand-line) / <alpha-value>)',
+                    indigo: 'rgb(var(--brand-indigo) / <alpha-value>)',
+                    primary: 'rgb(var(--brand-primary) / <alpha-value>)',
+                    amber: 'rgb(var(--brand-amber) / <alpha-value>)',
+                    positive: 'rgb(var(--brand-positive) / <alpha-value>)',
+                    negative: 'rgb(var(--brand-negative) / <alpha-value>)',
                 },
                 background: 'hsl(var(--background))',
                 foreground: 'hsl(var(--foreground))',
