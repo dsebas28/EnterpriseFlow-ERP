@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\SystemRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
@@ -21,6 +22,18 @@ class AuthenticatedSessionController extends Controller
         return Inertia::render('auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => $request->session()->get('status'),
+            // Only in demo mode: never advertise credentials on a real deployment.
+            'demo' => config('demo.enabled') ? [
+                'password' => config('demo.password'),
+                'accounts' => collect((array) config('demo.accounts'))
+                    ->map(fn (array $account, string $role) => [
+                        'role' => SystemRole::from($role)->label(),
+                        'email' => $account['email'],
+                        'summary' => $account['summary'],
+                    ])
+                    ->values()
+                    ->all(),
+            ] : null,
         ]);
     }
 

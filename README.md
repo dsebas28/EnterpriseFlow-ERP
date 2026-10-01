@@ -51,6 +51,7 @@ Proyecto de portafolio construido con foco en **backend de calidad de producció
 
 | | |
 |---|---|
+| ![Inicio](docs/screenshots/00-home.png) Página de inicio | ![Acceso](docs/screenshots/01-login.png) Acceso con cuentas demo de un clic |
 | ![Venta](docs/screenshots/05-sale.png) Venta con impuestos, descuentos y factura | ![Factura](docs/screenshots/06-invoice.png) Factura con pagos parciales |
 | ![Stock](docs/screenshots/04-stock.png) Stock por almacén | ![Orden de compra](docs/screenshots/07-purchase-order.png) Orden de compra parcialmente recibida |
 | ![Reporte](docs/screenshots/08-report.png) Reporte con exportación en segundo plano | ![Auditoría](docs/screenshots/09-audit.png) Auditoría con diff por campo |
@@ -95,7 +96,7 @@ composer dev        # servidor, cola, logs y Vite en paralelo
 
 ## Usuarios demo
 
-La contraseña de todos es `password`. La demo simula cuatro meses de actividad de **Demo Company** (50 productos, 20 clientes, 10 proveedores, ~160 ventas con sus facturas y cobros, compras, gastos, transferencias) usando las mismas Actions que la aplicación, con numeración y fechas coherentes. El Owner también pertenece a **Andes Retail**, una segunda empresa, para probar el cambio de empresa y el aislamiento.
+La contraseña de todos es `password`. Con `DEMO_MODE=true` (valor de `.env.example`) la página de acceso las lista y un clic rellena el formulario; en un despliegue real pon `DEMO_MODE=false` para no anunciar credenciales. La demo simula cuatro meses de actividad de **Demo Company** (50 productos, 20 clientes, 10 proveedores, ~160 ventas con sus facturas y cobros, compras, gastos, transferencias) usando las mismas Actions que la aplicación, con numeración y fechas coherentes. El Owner también pertenece a **Andes Retail**, una segunda empresa, para probar el cambio de empresa y el aislamiento.
 
 | Email | Rol | Qué puede hacer |
 |---|---|---|

@@ -13,6 +13,7 @@ export default {
         extend: {
             fontFamily: {
                 sans: ['Instrument Sans', ...defaultTheme.fontFamily.sans],
+                display: ['Bricolage Grotesque', 'Instrument Sans', ...defaultTheme.fontFamily.sans],
             },
             borderRadius: {
                 lg: 'var(--radius)',
@@ -20,6 +21,16 @@ export default {
                 sm: 'calc(var(--radius) - 4px)',
             },
             colors: {
+                // Public pages palette (resources/css/app.css).
+                ledger: {
+                    paper: 'rgb(var(--ledger-paper) / <alpha-value>)',
+                    sheet: 'rgb(var(--ledger-sheet) / <alpha-value>)',
+                    ink: 'rgb(var(--ledger-ink) / <alpha-value>)',
+                    muted: 'rgb(var(--ledger-muted) / <alpha-value>)',
+                    rule: 'rgb(var(--ledger-rule) / <alpha-value>)',
+                    green: 'rgb(var(--ledger-green) / <alpha-value>)',
+                    red: 'rgb(var(--ledger-red) / <alpha-value>)',
+                },
                 background: 'hsl(var(--background))',
                 foreground: 'hsl(var(--foreground))',
                 card: {

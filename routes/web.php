@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome');
+    return Inertia::render('Welcome', ['demo' => (bool) config('demo.enabled')]);
 })->name('home');
 
 // Invitee flow: works for guests and for signed-in users of any company.

@@ -1,10 +1,32 @@
 <?php
 
+use App\Enums\SystemRole;
 use App\Models\User;
+use Inertia\Testing\AssertableInertia as Assert;
 
 it('renders the landing and login pages', function () {
     $this->get('/')->assertOk();
     $this->get('/login')->assertOk();
+});
+
+it('never lists demo accounts outside demo mode', function () {
+    config(['demo.enabled' => false]);
+
+    $this->get('/login')->assertInertia(fn (Assert $page) => $page->component('auth/Login')->where('demo', null));
+    $this->get('/')->assertInertia(fn (Assert $page) => $page->where('demo', false));
+});
+
+it('lists one demo account per role in demo mode', function () {
+    config(['demo.enabled' => true]);
+
+    $this->get('/login')->assertInertia(fn (Assert $page) => $page
+        ->where('demo.password', 'password')
+        ->has('demo.accounts', count(SystemRole::cases()))
+        ->where('demo.accounts.0', [
+            'role' => 'Company Owner',
+            'email' => 'owner@demo.test',
+            'summary' => 'Everything, in both demo companies',
+        ]));
 });
 
 it('authenticates with valid credentials', function () {
