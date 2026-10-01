@@ -1,0 +1,81 @@
+erDiagram
+    customers {
+        ulid id PK
+        ulid company_id FK
+        varchar kind
+        varchar name
+        varchar tax_id
+        varchar email
+    }
+    customer_notes {
+        bigint id PK
+        ulid company_id FK
+        ulid customer_id FK
+        bigint user_id FK
+        text body
+    }
+    sales {
+        ulid id PK
+        ulid company_id FK
+        ulid customer_id FK
+        ulid warehouse_id FK
+        bigint created_by FK
+        bigint confirmed_by FK
+        bigint cancelled_by FK
+        varchar number
+        varchar status
+        date sale_date
+        character currency
+    }
+    sale_items {
+        bigint id PK
+        ulid company_id FK
+        ulid sale_id FK
+        ulid product_id FK
+        varchar description
+        integer quantity
+        bigint unit_price
+        integer discount_rate
+    }
+    invoices {
+        ulid id PK
+        ulid company_id FK
+        ulid sale_id FK
+        ulid customer_id FK
+        bigint created_by FK
+        bigint issued_by FK
+        bigint cancelled_by FK
+        varchar number
+        varchar status
+        date issue_date
+        date due_date
+    }
+    invoice_items {
+        bigint id PK
+        ulid company_id FK
+        ulid invoice_id FK
+        ulid product_id FK
+        varchar description
+        integer quantity
+        bigint unit_price
+        integer discount_rate
+    }
+    payments {
+        ulid id PK
+        ulid company_id FK
+        ulid invoice_id FK
+        ulid supplier_bill_id FK
+        bigint created_by FK
+        bigint voided_by FK
+        varchar number
+        varchar direction
+        varchar method
+        bigint amount
+    }
+    invoices ||--o{ payments : "invoice_id"
+    customers ||--o{ customer_notes : "customer_id"
+    customers ||--o{ sales : "customer_id"
+    sales ||--o{ sale_items : "sale_id"
+    sales ||--o{ invoices : "sale_id"
+    customers ||--o{ invoices : "customer_id"
+    invoices ||--o{ invoice_items : "invoice_id"

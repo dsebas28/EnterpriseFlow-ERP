@@ -1,0 +1,61 @@
+erDiagram
+    categories {
+        bigint id PK
+        ulid company_id FK
+        bigint parent_id FK
+        varchar name
+        varchar slug
+        varchar description
+    }
+    products {
+        ulid id PK
+        ulid company_id FK
+        ulid parent_id FK
+        bigint category_id FK
+        varchar type
+        varchar sku
+        varchar barcode
+        varchar name
+    }
+    product_images {
+        bigint id PK
+        ulid company_id FK
+        ulid product_id FK
+        varchar disk
+        varchar path
+        smallint position
+    }
+    warehouses {
+        ulid id PK
+        ulid company_id FK
+        varchar code
+        varchar name
+        varchar address
+        varchar city
+    }
+    stock_movements {
+        bigint id PK
+        ulid company_id FK
+        ulid product_id FK
+        ulid warehouse_id FK
+        bigint user_id FK
+        varchar type
+        integer quantity
+        integer balance_after
+        bigint unit_cost
+    }
+    stock_levels {
+        bigint id PK
+        ulid company_id FK
+        ulid product_id FK
+        ulid warehouse_id FK
+        integer quantity
+    }
+    categories ||--o{ categories : "parent_id"
+    products ||--o{ products : "parent_id"
+    categories ||--o{ products : "category_id"
+    products ||--o{ product_images : "product_id"
+    products ||--o{ stock_movements : "product_id"
+    warehouses ||--o{ stock_movements : "warehouse_id"
+    products ||--o{ stock_levels : "product_id"
+    warehouses ||--o{ stock_levels : "warehouse_id"
