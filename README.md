@@ -20,6 +20,7 @@ Proyecto de portafolio construido con foco en **backend de calidad de producció
 
 - [Funcionalidades](#funcionalidades)
 - [Capturas](#capturas)
+- [Base de datos (PostgreSQL)](#base-de-datos-postgresql)
 - [Puesta en marcha](#puesta-en-marcha)
 - [Usuarios demo](#usuarios-demo)
 - [API REST](#api-rest)
@@ -58,6 +59,18 @@ Proyecto de portafolio construido con foco en **backend de calidad de producció
 | ![Roles](docs/screenshots/10-roles.png) Roles y permisos por empresa | ![Notificaciones](docs/screenshots/11-notifications.png) Centro de notificaciones |
 | ![Cliente](docs/screenshots/12-customer.png) Ficha de cliente con saldo | ![Modo oscuro](docs/screenshots/13-dashboard-dark.png) Modo oscuro |
 | ![Productos](docs/screenshots/03-products.png) Catálogo | ![API](docs/screenshots/14-api-docs.png) Documentación OpenAPI |
+
+## Base de datos (PostgreSQL)
+
+PostgreSQL 16 es el motor principal (Docker, CI y producción). El modelo, las decisiones de diseño y diez consultas comentadas están en **[docs/BASE-DE-DATOS.md](docs/BASE-DE-DATOS.md)**; las imágenes se generaron ejecutando cada consulta sobre la base real de la demo.
+
+| | |
+|---|---|
+| ![Modelo de ventas](docs/database/images/er-ventas.png) Modelo entidad-relación de ventas y facturación | ![Libro de inventario](docs/database/images/04-libro-de-inventario.png) Libro de inventario con función de ventana |
+| ![Cuentas por cobrar](docs/database/images/03-cuentas-por-cobrar.png) Antigüedad de saldos con `FILTER` | ![Trigger](docs/database/images/07-trigger-solo-insercion.png) Trigger que impide modificar el libro |
+| ![Multiempresa](docs/database/images/05-aislamiento-multiempresa.png) Dos empresas aisladas en la misma base | ![Plan de ejecución](docs/database/images/09-plan-de-ejecucion.png) `EXPLAIN ANALYZE` usando el índice compuesto |
+
+¿Cómo está hecho el código? La **[guía del código](docs/GUIA-DEL-CODIGO.md)** lo explica en español: organización, multiempresa, permisos, una venta paso a paso, inventario, dinero, colas, API, frontend y tests.
 
 ## Puesta en marcha
 

@@ -1,0 +1,61 @@
+erDiagram
+    companies {
+        ulid id PK
+        varchar name
+        varchar legal_name
+        varchar tax_id
+        varchar email
+    }
+    users {
+        bigint id PK
+        varchar name
+        varchar email
+        varchar phone
+        timestamp email_verified_at
+    }
+    company_user {
+        bigint id PK
+        ulid company_id FK
+        bigint user_id FK
+        bigint invited_by FK
+        varchar status
+        timestamp joined_at
+    }
+    roles {
+        bigint id PK
+        ulid company_id FK
+        varchar name
+        varchar slug
+        varchar description
+        boolean is_system
+    }
+    role_permissions {
+        bigint role_id PK,FK
+        varchar permission PK
+    }
+    membership_role {
+        ulid company_id FK
+        bigint membership_id PK,FK
+        bigint role_id PK,FK
+    }
+    invitations {
+        ulid id PK
+        ulid company_id FK
+        bigint role_id FK
+        bigint invited_by FK
+        varchar email
+        character token_hash
+        timestamp expires_at
+        timestamp accepted_at
+    }
+    companies ||--o{ company_user : "company_id"
+    users ||--o{ company_user : "user_id"
+    users ||--o{ company_user : "invited_by"
+    companies ||--o{ roles : "company_id"
+    roles ||--o{ role_permissions : "role_id"
+    companies ||--o{ membership_role : "company_id"
+    company_user ||--o{ membership_role : "membership_id"
+    roles ||--o{ membership_role : "role_id"
+    companies ||--o{ invitations : "company_id"
+    users ||--o{ invitations : "invited_by"
+    roles ||--o{ invitations : "role_id"

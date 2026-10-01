@@ -1,0 +1,96 @@
+erDiagram
+    suppliers {
+        ulid id PK
+        ulid company_id FK
+        varchar kind
+        varchar name
+        varchar tax_id
+        varchar contact_name
+    }
+    purchase_orders {
+        ulid id PK
+        ulid company_id FK
+        ulid supplier_id FK
+        ulid warehouse_id FK
+        bigint created_by FK
+        bigint approved_by FK
+        bigint cancelled_by FK
+        varchar number
+        varchar status
+        date order_date
+        date expected_date
+    }
+    purchase_order_items {
+        bigint id PK
+        ulid company_id FK
+        ulid purchase_order_id FK
+        ulid product_id FK
+        varchar description
+        integer quantity
+        integer received_quantity
+        bigint unit_cost
+    }
+    purchase_receipts {
+        ulid id PK
+        ulid company_id FK
+        ulid purchase_order_id FK
+        ulid warehouse_id FK
+        bigint received_by FK
+        varchar number
+        timestamp received_at
+        text notes
+    }
+    purchase_receipt_items {
+        bigint id PK
+        ulid company_id FK
+        ulid purchase_receipt_id FK
+        bigint purchase_order_item_id FK
+        ulid product_id FK
+        integer quantity
+        bigint unit_cost
+    }
+    supplier_bills {
+        ulid id PK
+        ulid company_id FK
+        ulid supplier_id FK
+        ulid purchase_order_id FK
+        bigint created_by FK
+        bigint cancelled_by FK
+        varchar number
+        varchar supplier_reference
+        varchar status
+        date bill_date
+    }
+    supplier_bill_items {
+        bigint id PK
+        ulid company_id FK
+        ulid supplier_bill_id FK
+        bigint purchase_order_item_id FK
+        ulid product_id FK
+        varchar description
+        integer quantity
+        bigint unit_cost
+        integer tax_rate
+    }
+    payments {
+        ulid id PK
+        ulid company_id FK
+        ulid invoice_id FK
+        ulid supplier_bill_id FK
+        bigint created_by FK
+        bigint voided_by FK
+        varchar number
+        varchar direction
+        varchar method
+        bigint amount
+    }
+    supplier_bills ||--o{ supplier_bill_items : "supplier_bill_id"
+    purchase_order_items ||--o{ supplier_bill_items : "purchase_order_item_id"
+    supplier_bills ||--o{ payments : "supplier_bill_id"
+    suppliers ||--o{ purchase_orders : "supplier_id"
+    purchase_orders ||--o{ purchase_order_items : "purchase_order_id"
+    purchase_orders ||--o{ purchase_receipts : "purchase_order_id"
+    purchase_receipts ||--o{ purchase_receipt_items : "purchase_receipt_id"
+    purchase_order_items ||--o{ purchase_receipt_items : "purchase_order_item_id"
+    suppliers ||--o{ supplier_bills : "supplier_id"
+    purchase_orders ||--o{ supplier_bills : "purchase_order_id"
