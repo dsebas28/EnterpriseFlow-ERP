@@ -26,7 +26,7 @@ jobs:
     name: Backend quality (Pint, Larastan, audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -56,7 +56,7 @@ jobs:
     name: Frontend (Prettier, ESLint, vue-tsc, build)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Ziggy's JS is imported from vendor/, so PHP dependencies are needed.
       - uses: shivammathur/setup-php@v2
@@ -112,7 +112,7 @@ jobs:
       DB_PASSWORD: secret
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -154,7 +154,7 @@ jobs:
     name: Docker build and smoke test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Prepare environment
         run: |
@@ -199,7 +199,7 @@ jobs:
       matrix:
         target: [app, web]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: docker/setup-buildx-action@v3
 
